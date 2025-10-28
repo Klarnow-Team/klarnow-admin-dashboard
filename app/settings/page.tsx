@@ -92,10 +92,10 @@ export default function SettingsPage() {
                   <div className="space-y-2">
                     <Label htmlFor="role">Role</Label>
                     <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white border-gray-300">
                         <SelectValue placeholder="Select role" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white border border-gray-200">
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="super_admin">Super Admin</SelectItem>
                         <SelectItem value="moderator">Moderator</SelectItem>
@@ -120,10 +120,10 @@ export default function SettingsPage() {
                   <div className="space-y-2">
                     <Label htmlFor="notifications">Notifications</Label>
                     <Select value={formData.notifications} onValueChange={(value) => setFormData({ ...formData, notifications: value })}>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white border-gray-300">
                         <SelectValue placeholder="Select notification preference" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white border border-gray-200">
                         <SelectItem value="all">All Notifications</SelectItem>
                         <SelectItem value="important">Important Only</SelectItem>
                         <SelectItem value="none">None</SelectItem>
@@ -134,10 +134,10 @@ export default function SettingsPage() {
                   <div className="space-y-2">
                     <Label htmlFor="theme">Theme</Label>
                     <Select value={formData.theme} onValueChange={(value) => setFormData({ ...formData, theme: value })}>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white border-gray-300">
                         <SelectValue placeholder="Select theme" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white border border-gray-200">
                         <SelectItem value="light">Light</SelectItem>
                         <SelectItem value="dark">Dark</SelectItem>
                         <SelectItem value="auto">Auto</SelectItem>
@@ -148,10 +148,10 @@ export default function SettingsPage() {
                   <div className="space-y-2">
                     <Label htmlFor="language">Language</Label>
                     <Select value={formData.language} onValueChange={(value) => setFormData({ ...formData, language: value })}>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white border-gray-300">
                         <SelectValue placeholder="Select language" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white border border-gray-200">
                         <SelectItem value="en">English</SelectItem>
                         <SelectItem value="es">Spanish</SelectItem>
                         <SelectItem value="fr">French</SelectItem>

@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
-import { LogIn, Mail, Lock, Shield, AlertCircle } from 'lucide-react'
+import { LogIn, Mail, Lock, Shield, AlertCircle, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,10 +13,21 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+
+  // Check for access denied error from middleware
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('error') === 'access_denied') {
+      setError('Access denied. You are not authorized to access the admin panel.')
+      // Clear the session since user is not authorized
+      supabase.auth.signOut()
+    }
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -69,26 +80,22 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        // All authenticated users are admins - skip admin table check
-        console.log('✅ User authenticated, redirecting to dashboard')
+        console.log('✅ User authenticated, checking admin status...')
         
-        // Try to add user to admins table if they don't exist
-        const { error: adminInsertError } = await supabase
+        // Check if user exists in admins table
+        const { data: adminData, error: adminError } = await supabase
           .from('admins')
-          .upsert({
-            user_id: data.user.id,
-            email: data.user.email || email,
-            name: email.split('@')[0], // Use email prefix as name
-            role: 'admin'
-          }, {
-            onConflict: 'user_id'
-          })
+          .select('id, name, email, role')
+          .eq('user_id', data.user.id)
+          .single()
 
-        if (adminInsertError) {
-          console.log('Note: Could not update admins table:', adminInsertError.message)
+        if (adminError || !adminData) {
+          console.log('❌ User is not an admin:', adminError?.message)
+          setError('Access denied. You are not authorized to access the admin panel.')
+          return
         }
 
-        console.log('✅ Login successful! Redirecting to dashboard...')
+        console.log('✅ Admin access confirmed, redirecting to dashboard...')
         router.push('/dashboard')
         router.refresh()
       }
@@ -112,7 +119,7 @@ export default function LoginPage() {
             <img 
               src="/assets/klarnow.svg" 
               alt="Klarnow" 
-              className="h-8 w-auto"
+              className="h-4 w-auto"
             />
           </div>
         </div>
@@ -128,7 +135,7 @@ export default function LoginPage() {
           <Button
             type="button"
             variant="outline"
-            className="w-full h-12 border-gray-300 hover:bg-gray-50 text-gray-900 font-medium"
+            className="w-full h-12 border-gray-300 hover:bg-gray-50 text-gray-900 font-medium rounded-full"
           >
             <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -169,7 +176,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="h-12 border-gray-300 focus:border-[#8359ee] focus:ring-[#8359ee] rounded-lg"
+              className="h-12 border-gray-300 focus:border-[#8359ee] focus:ring-[#8359ee] rounded-full"
               placeholder="enter email..."
             />
           </div>
@@ -177,22 +184,35 @@ export default function LoginPage() {
           {/* Password Field */}
           <div className="space-y-2">
             <Label htmlFor="password" className="text-gray-900 font-medium">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="h-12 border-gray-300 focus:border-[#8359ee] focus:ring-[#8359ee] rounded-lg"
-              placeholder="enter password..."
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="h-12 border-gray-300 focus:border-[#8359ee] focus:ring-[#8359ee] rounded-full pr-12"
+                placeholder="enter password..."
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Login Button */}
           <Button
             type="submit"
             disabled={loading}
-            className="w-full h-12 bg-[#8359ee] hover:bg-[#7245e8] text-white font-medium rounded-lg"
+            className="w-full h-12 bg-[#8359ee] hover:bg-[#7245e8] text-white font-medium rounded-full"
           >
             {loading ? (
               <>

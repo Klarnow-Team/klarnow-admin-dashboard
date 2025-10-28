@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
-import { LogOut, Plus, Edit, Trash2, ArrowRight, Users, Package } from 'lucide-react'
+import { LogOut, Plus, Edit, Trash2, ArrowRight, Users, Package, CheckCircle2Icon, AlertCircleIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
@@ -45,6 +46,7 @@ export default function DashboardPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [adminToDelete, setAdminToDelete] = useState<{ id: number; email: string } | null>(null)
   const [editingItem, setEditingItem] = useState<Item | null>(null)
+  const [alertMessage, setAlertMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [formData, setFormData] = useState({ name: '', description: '', status: 'active' })
   const [adminFormData, setAdminFormData] = useState({ name: '', email: '', password: '', role: 'admin' })
   const router = useRouter()
@@ -59,6 +61,20 @@ export default function DashboardPage() {
 
   // Use custom hook for user management
   const { user, getCurrentUserId, isAuthenticated } = useCurrentUser()
+
+  // Auto-hide alerts after 5 seconds
+  useEffect(() => {
+    if (alertMessage) {
+      const timer = setTimeout(() => {
+        setAlertMessage(null)
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [alertMessage])
+
+  const showAlert = (type: 'success' | 'error', message: string) => {
+    setAlertMessage({ type, message })
+  }
 
   useEffect(() => {
     fetchItems()
@@ -285,7 +301,7 @@ export default function DashboardPage() {
 
       if (!response.ok) {
         console.error('❌ Failed to create admin:', result.error)
-        alert(result.error || 'Failed to create admin')
+        showAlert('error', result.error || 'Failed to create admin')
         return
       }
 
@@ -297,10 +313,10 @@ export default function DashboardPage() {
       console.log('🔄 Refreshing admins list...')
       fetchAdmins()
       
-      alert('Admin created successfully!')
+      showAlert('success', 'Admin created successfully!')
     } catch (error) {
       console.error('❌ Error creating admin:', error)
-      alert('Failed to create admin')
+      showAlert('error', 'Failed to create admin')
     }
   }
 
@@ -362,10 +378,10 @@ export default function DashboardPage() {
       setIsDeleteModalOpen(false)
       setAdminToDelete(null)
       fetchAdmins()
-      alert('Admin deleted successfully!')
+      showAlert('success', 'Admin deleted successfully!')
     } catch (error: any) {
       console.error('❌ Error deleting admin:', error)
-      alert(`Failed to delete admin: ${error.message}`)
+      showAlert('error', `Failed to delete admin: ${error.message}`)
     }
   }
 
@@ -505,6 +521,23 @@ export default function DashboardPage() {
       
       <main className="flex-1 overflow-y-auto bg-white">
         <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-12 py-6">
+          {/* Alert Messages */}
+          {alertMessage && (
+            <Alert variant={alertMessage.type === 'error' ? 'destructive' : 'default'} className="mb-6">
+              {alertMessage.type === 'success' ? (
+                <CheckCircle2Icon className="h-4 w-4" />
+              ) : (
+                <AlertCircleIcon className="h-4 w-4" />
+              )}
+              <AlertTitle>
+                {alertMessage.type === 'success' ? 'Success!' : 'Error'}
+              </AlertTitle>
+              <AlertDescription>
+                {alertMessage.message}
+              </AlertDescription>
+            </Alert>
+          )}
+          
           {/* Page Title */}
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
@@ -658,34 +691,44 @@ export default function DashboardPage() {
 
       {/* Delete Confirmation Modal */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-destructive/10 rounded-full">
-              <Trash2 className="w-6 h-6 text-destructive" />
+        <DialogContent className="sm:max-w-md bg-white border border-gray-200 rounded-lg">
+          <DialogHeader className="text-center space-y-4">
+            {/* Warning Icon */}
+            <div className="flex items-center justify-center w-16 h-16 mx-auto bg-red-50 rounded-full">
+              <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center">
+                <span className="text-white text-lg font-bold">!</span>
+              </div>
             </div>
-            <DialogTitle className="text-center">Delete Admin?</DialogTitle>
-            <DialogDescription className="text-center">
-              Are you sure you want to delete{' '}
-              <span className="font-semibold">{adminToDelete?.email}</span>?
-              This action cannot be undone.
+            
+            {/* Title */}
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              Are you sure?
+            </DialogTitle>
+            
+            {/* Description */}
+            <DialogDescription className="text-gray-600 text-sm leading-relaxed">
+              This action cannot be undone. All data associated with{' '}
+              <span className="font-semibold text-gray-900">{adminToDelete?.email}</span>{' '}
+              will be permanently deleted.
             </DialogDescription>
           </DialogHeader>
           
-          <DialogFooter>
+          {/* Action Buttons - Stacked */}
+          <div className="space-y-3 mt-6">
+            <Button
+              onClick={confirmDeleteAdmin}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 rounded-lg"
+            >
+              Delete Admin
+            </Button>
             <Button
               variant="outline"
               onClick={cancelDeleteAdmin}
+              className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-3 rounded-lg"
             >
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmDeleteAdmin}
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete
-            </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 

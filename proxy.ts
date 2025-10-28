@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -31,8 +31,12 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Protect dashboard routes - all authenticated users are admins
-  if (request.nextUrl.pathname.startsWith('/dashboard')) {
+  // Protect dashboard routes - only admins can access
+  if (request.nextUrl.pathname.startsWith('/dashboard') || 
+      request.nextUrl.pathname.startsWith('/access') ||
+      request.nextUrl.pathname.startsWith('/settings') ||
+      request.nextUrl.pathname.startsWith('/activity')) {
+    
     // Temporarily allow demo session for testing
     const demoSession = request.cookies.get('demo_session')
     if (demoSession?.value === 'active') {
@@ -45,7 +49,19 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
 
-    // All authenticated users can access dashboard
+    // Check if user is an admin in the database
+    const { data: adminData } = await supabase
+      .from('admins')
+      .select('id')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!adminData) {
+      // User is not an admin, redirect to login with error
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('error', 'access_denied')
+      return NextResponse.redirect(loginUrl)
+    }
   }
 
   // Protect login page - redirect to dashboard if already logged in

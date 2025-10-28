@@ -46,13 +46,9 @@ export function useCurrentUser() {
               id: adminData.user_id
             })
           } else {
-            console.log('⚠️ [useCurrentUser] No admin data found in admins table, using auth user data:', adminError)
-            // Fallback to auth user data
-            setUser({
-              name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Admin User',
-              email: authUser.email || 'admin@example.com',
-              id: authUser.id
-            })
+            console.log('❌ [useCurrentUser] No admin data found in admins table - user is not authorized:', adminError)
+            // User is not an admin - deny access
+            setUser(null)
           }
         } else {
           console.log('❌ [useCurrentUser] No authenticated user found')

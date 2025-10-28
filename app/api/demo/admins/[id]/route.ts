@@ -11,7 +11,13 @@ export async function DELETE(
 ) {
   try {
     const { id } = params
-    console.log('🗑️ Deleting admin with ID:', id)
+    // Coerce and validate id as number (admins.id is BIGSERIAL)
+    const idNum = Number(id)
+    if (!Number.isFinite(idNum)) {
+      console.error('❌ Invalid admin id param:', id)
+      return NextResponse.json({ error: 'Invalid admin id' }, { status: 400 })
+    }
+    console.log('🗑️ Deleting admin with ID:', idNum)
 
     const supabase = createSupabaseClient(
       supabaseUrl!,
@@ -28,7 +34,7 @@ export async function DELETE(
     const { data: adminData, error: fetchError } = await supabase
       .from('admins')
       .select('user_id')
-      .eq('id', id)
+      .eq('id', idNum)
 
     if (fetchError) {
       console.error('❌ Error fetching admin:', fetchError)
@@ -46,7 +52,7 @@ export async function DELETE(
     const { error: deleteError } = await supabase
       .from('admins')
       .delete()
-      .eq('id', id)
+      .eq('id', idNum)
 
     if (deleteError) {
       console.error('❌ Error deleting admin:', deleteError)
@@ -56,12 +62,20 @@ export async function DELETE(
     // If user_id exists, delete the auth user as well
     if (userId) {
       console.log('🗑️ Deleting auth user:', userId)
+      console.log('🔑 Using service role key:', supabaseKey ? 'YES' : 'NO')
+      console.log('🔑 Service role key starts with:', supabaseKey?.substring(0, 20) + '...')
+      
       const { error: authError } = await supabase.auth.admin.deleteUser(userId)
       
       if (authError) {
         console.error('❌ Error deleting auth user:', authError)
+        console.error('❌ Auth error details:', JSON.stringify(authError, null, 2))
         // Don't throw - admin is already deleted from table
+      } else {
+        console.log('✅ Auth user deleted successfully')
       }
+    } else {
+      console.log('⚠️ No user_id found for admin, skipping auth deletion')
     }
 
     console.log('✅ Admin deleted successfully')

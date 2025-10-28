@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { UserPlus, Mail, Lock, User, Shield, AlertCircle } from 'lucide-react'
+import { UserPlus, Mail, Lock, User, Shield, AlertCircle, CheckCircle2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 export default function SignupPage() {
   const [name, setName] = useState('')
@@ -16,6 +16,7 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const router = useRouter()
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -55,9 +56,11 @@ export default function SignupPage() {
         throw new Error(result.error || 'Failed to create admin')
       }
 
-      // Success - redirect to login
-      alert('Admin account created successfully! Please login.')
-      router.push('/login')
+      // Success - show success message and redirect to login
+      setSuccessMessage('Admin account created successfully! Please login.')
+      setTimeout(() => {
+        router.push('/login')
+      }, 2000)
     } catch (error: any) {
       setError(error.message || 'Failed to create admin account')
     } finally {
@@ -90,10 +93,20 @@ export default function SignupPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSignup} className="space-y-6">
+              {/* Success Message */}
+              {successMessage && (
+                <Alert className="border-green-200 bg-green-50">
+                  <CheckCircle2Icon className="h-4 w-4" />
+                  <AlertTitle className="text-green-800">Success!</AlertTitle>
+                  <AlertDescription className="text-green-800">{successMessage}</AlertDescription>
+                </Alert>
+              )}
+              
               {/* Error Message */}
               {error && (
                 <Alert variant="destructive" className="border-red-200 bg-red-50">
                   <AlertCircle className="h-4 w-4" />
+                  <AlertTitle className="text-red-800">Error</AlertTitle>
                   <AlertDescription className="text-red-800">{error}</AlertDescription>
                 </Alert>
               )}

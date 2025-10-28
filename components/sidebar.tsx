@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Activity, Settings, Menu, X, Bell, MessageSquare, Download, Smartphone } from 'lucide-react'
+import { LayoutDashboard, Activity, Settings, Menu, X, Bell, MessageSquare, Download, Smartphone, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -19,9 +19,9 @@ const navigation = [
     icon: Activity,
   },
   {
-    name: 'Settings',
-    href: '/settings',
-    icon: Settings,
+    name: 'Access',
+    href: '/access',
+    icon: Shield,
   },
 ]
 
@@ -55,7 +55,7 @@ export default function Sidebar({ children }: SidebarProps) {
               <img 
                 src="/assets/klarnow.svg" 
                 alt="Klarnow" 
-                className="h-8 w-auto"
+                className="h-4 w-auto"
               />
             </div>
             <Button
