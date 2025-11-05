@@ -7,10 +7,10 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PU
 // DELETE - Delete an admin by ID
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
     // Coerce and validate id as number (admins.id is BIGSERIAL)
     const idNum = Number(id)
     if (!Number.isFinite(idNum)) {

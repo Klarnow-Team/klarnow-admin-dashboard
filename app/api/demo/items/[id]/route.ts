@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -6,24 +6,17 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PU
 
 // PUT - Update item
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const { name, description, status } = body
 
-    const supabase = createSupabaseClient(
-      supabaseUrl!,
-      supabaseKey!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    )
+    const supabase = createSupabaseClient(supabaseUrl!, supabaseKey!, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
 
     const { data, error } = await supabase
       .from('items')
@@ -43,22 +36,15 @@ export async function PUT(
 
 // DELETE - Delete item
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
 
-    const supabase = createSupabaseClient(
-      supabaseUrl!,
-      supabaseKey!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    )
+    const supabase = createSupabaseClient(supabaseUrl!, supabaseKey!, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
 
     const { error } = await supabase
       .from('items')
