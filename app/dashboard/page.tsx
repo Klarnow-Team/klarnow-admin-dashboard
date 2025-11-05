@@ -173,7 +173,7 @@ export default function DashboardPage() {
   const fetchItems = async () => {
     try {
       // Check if demo session is active
-      const demoSession = document.cookie.includes('demo_session=active')
+      const demoSession = typeof window !== 'undefined' && document.cookie.includes('demo_session=active')
       
       if (demoSession) {
         // Use API route for demo user
@@ -209,7 +209,7 @@ export default function DashboardPage() {
       console.log('🔍 Fetching admins...')
       
       // Check if demo session is active
-      const demoSession = document.cookie.includes('demo_session=active')
+      const demoSession = typeof window !== 'undefined' && document.cookie.includes('demo_session=active')
       console.log('🔐 Demo session active:', demoSession)
       
       if (demoSession) {
@@ -232,6 +232,11 @@ export default function DashboardPage() {
         }
       } else {
         // Use Supabase directly for authenticated users
+        if (typeof window === 'undefined') {
+          return
+        }
+        
+        const supabase = createClient()
         console.log('📡 Using Supabase directly...')
         const { data, error } = await supabase
           .from('admins')
@@ -256,7 +261,7 @@ export default function DashboardPage() {
       console.log('🔍 Fetching quiz submissions for dashboard...')
       
       // Check if demo session is active
-      const demoSession = document.cookie.includes('demo_session=active')
+      const demoSession = typeof window !== 'undefined' && document.cookie.includes('demo_session=active')
       
       if (demoSession) {
         // For demo, create some sample data
@@ -269,6 +274,11 @@ export default function DashboardPage() {
         console.log('✅ Demo quiz submissions set:', sampleSubmissions.length)
       } else {
         // Use Supabase directly for authenticated users
+        if (typeof window === 'undefined') {
+          return
+        }
+        
+        const supabase = createClient()
         const { data, error } = await supabase
           .from('quiz_submissions')
           .select('id, full_name, email, created_at')
@@ -376,6 +386,11 @@ export default function DashboardPage() {
         
       } else {
         // Use Supabase directly for authenticated users
+        if (typeof window === 'undefined') {
+          throw new Error('Cannot delete admin during SSR')
+        }
+        
+        const supabase = createClient()
         const { error } = await supabase
           .from('admins')
           .delete()
@@ -423,6 +438,11 @@ export default function DashboardPage() {
         if (!result.success) throw new Error(result.error)
       } else {
         // Use Supabase directly for authenticated users
+        if (typeof window === 'undefined') {
+          throw new Error('Cannot create item during SSR')
+        }
+        
+        const supabase = createClient()
         const { error } = await supabase
           .from('items')
           .insert([itemDataWithCreator])
@@ -462,6 +482,11 @@ export default function DashboardPage() {
         if (!result.success) throw new Error(result.error)
       } else {
         // Use Supabase directly for authenticated users
+        if (typeof window === 'undefined') {
+          throw new Error('Cannot update item during SSR')
+        }
+        
+        const supabase = createClient()
         const { error } = await supabase
           .from('items')
           .update(itemDataWithUpdater)
@@ -493,6 +518,11 @@ export default function DashboardPage() {
         if (!result.success) throw new Error(result.error)
       } else {
         // Use Supabase directly for authenticated users
+        if (typeof window === 'undefined') {
+          throw new Error('Cannot delete item during SSR')
+        }
+        
+        const supabase = createClient()
         const { error } = await supabase
           .from('items')
           .delete()
