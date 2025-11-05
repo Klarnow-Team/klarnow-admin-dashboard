@@ -30,7 +30,6 @@ interface QuizSubmission {
 export default function ActivityPage() {
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([])
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
 
   // Fetch quiz submissions
   const fetchQuizSubmissions = async () => {
@@ -38,7 +37,7 @@ export default function ActivityPage() {
       console.log('🔍 Fetching quiz submissions...')
       
       // Check if demo session is active
-      const demoSession = document.cookie.includes('demo_session=active')
+      const demoSession = typeof window !== 'undefined' && document.cookie.includes('demo_session=active')
       
       if (demoSession) {
         // For demo, create some sample data
@@ -94,11 +93,20 @@ export default function ActivityPage() {
         ]
         setSubmissions(sampleSubmissions)
       } else {
-        // Use Supabase directly for authenticated users
-        console.log('🔍 Attempting to fetch from quiz_submissions table...')
+        // Create Supabase client only on client side
+        if (typeof window === 'undefined') {
+          setLoading(false)
+          return
+        }
         
-        // First try a simple query without joins to see if table exists
-        const { data, error } = await supabase
+        try {
+          const supabase = createClient()
+          
+          // Use Supabase directly for authenticated users
+          console.log('🔍 Attempting to fetch from quiz_submissions table...')
+          
+          // First try a simple query without joins to see if table exists
+          const { data, error } = await supabase
           .from('quiz_submissions')
           .select('*')
           .order('created_at', { ascending: false })
@@ -212,6 +220,29 @@ export default function ActivityPage() {
         })) || []
 
         setSubmissions(transformedSubmissions)
+        } catch (clientError: any) {
+          // If Supabase client creation fails (e.g., missing env vars during build)
+          console.error('❌ Error creating Supabase client:', clientError)
+          // Show sample data as fallback
+          const sampleSubmissions: QuizSubmission[] = [
+            {
+              id: '1',
+              full_name: 'Sample User',
+              email: 'sample@example.com',
+              phone_number: '+1234567890',
+              brand_name: 'Sample Brand',
+              logo_status: 'pending',
+              brand_goals: ['Brand Awareness'],
+              online_presence: 'Website',
+              audience: ['General'],
+              brand_style: 'Modern',
+              timeline: 'flexible',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          ]
+          setSubmissions(sampleSubmissions)
+        }
       }
     } catch (error) {
       console.error('❌ Error fetching quiz submissions:', error)
