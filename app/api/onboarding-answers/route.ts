@@ -23,13 +23,14 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Fetch clients by userId for answers that don't have a direct client relationship
-    const userIds = onboardingAnswers.map((answer: typeof onboardingAnswers[0]) => answer.userId)
+    // All userIds for fallback lookup
+    const userIds = onboardingAnswers.map(
+      (answer: typeof onboardingAnswers[number]) => answer.userId
+    )
+
     const clientsByUserId = await prisma.client.findMany({
       where: {
-        userId: {
-          in: userIds,
-        },
+        userId: { in: userIds },
       },
       select: {
         id: true,
@@ -40,28 +41,35 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Create a map of userId to client for quick lookup
-    const clientMap = new Map(clientsByUserId.map(client => [client.userId, client]))
+    // ⭐ FIXED: explicitly type "client"
+    const clientMap = new Map(
+      clientsByUserId.map(
+        (client: typeof clientsByUserId[number]) => [client.userId, client]
+      )
+    )
 
-    const formattedAnswers = onboardingAnswers.map((answer: typeof onboardingAnswers[0]) => {
-      // Try to get client from relationship first, then fallback to userId lookup
-      const client = answer.client || clientMap.get(answer.userId)
-      
-      return {
-        id: answer.id,
-        user_id: answer.userId,
-        answers: answer.answers,
-        completed_at: answer.completedAt.toISOString(),
-        created_at: answer.createdAt.toISOString(),
-        updated_at: answer.updatedAt.toISOString(),
-        client: client ? {
-          id: client.id,
-          name: client.name,
-          email: client.email,
-          plan: client.plan,
-        } : null,
+    const formattedAnswers = onboardingAnswers.map(
+      (answer: typeof onboardingAnswers[number]) => {
+        const client = answer.client || clientMap.get(answer.userId)
+
+        return {
+          id: answer.id,
+          user_id: answer.userId,
+          answers: answer.answers,
+          completed_at: answer.completedAt.toISOString(),
+          created_at: answer.createdAt.toISOString(),
+          updated_at: answer.updatedAt.toISOString(),
+          client: client
+            ? {
+                id: client.id,
+                name: client.name,
+                email: client.email,
+                plan: client.plan,
+              }
+            : null,
+        }
       }
-    })
+    )
 
     console.log(`✅ Fetched ${formattedAnswers.length} onboarding answers`)
 
@@ -93,4 +101,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-
