@@ -24,7 +24,7 @@ export async function GET() {
     })
 
     // Transform to match the expected format
-    const formattedAdmins = admins.map(admin => ({
+    const formattedAdmins = admins.map((admin: typeof admins[0]) => ({
       id: admin.id,
       user_id: admin.userId,
       email: admin.email,
