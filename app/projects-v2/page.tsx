@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { CheckCircle2, Clock, AlertCircle, Circle, ChevronRight, Calendar, Mail, Package, RefreshCw } from 'lucide-react'
-import { createClient } from '@/utils/supabase/client'
 import { getPhaseStructureForKitType, mergePhaseStructureWithState, type PhasesState } from '@/lib/phase-structure'
 
 // TypeScript types
@@ -109,46 +108,6 @@ export default function ProjectsPageV2() {
     fetchProjects()
   }, [fetchProjects])
 
-  // Set up real-time subscription for projects
-  useEffect(() => {
-    const supabase = createClient()
-    
-    const channel = supabase
-      .channel('projects-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'projects',
-        },
-        (payload) => {
-          console.log('🔄 Real-time project update:', payload)
-          
-          // Update the project in local state
-          setProjects(prev => prev.map(project => {
-            if (project.id === payload.new.id) {
-              const updatedProject = payload.new as Project
-              const structure = getPhaseStructureForKitType(updatedProject.kit_type)
-              const phases = mergePhaseStructureWithState(structure, updatedProject.phases_state || null)
-              
-              return {
-                ...project,
-                ...updatedProject,
-                phases,
-              }
-            }
-            return project
-          }))
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [])
-
   // Update phase status
   const updatePhaseStatus = async (projectId: string, phaseId: string, status: PhaseStatus) => {
     try {
@@ -200,7 +159,6 @@ export default function ProjectsPageV2() {
         throw new Error(error.error || 'Failed to update checklist item')
       }
 
-      // Real-time subscription will handle the update
       await fetchProjects()
     } catch (err) {
       console.error('Failed to update checklist:', err)

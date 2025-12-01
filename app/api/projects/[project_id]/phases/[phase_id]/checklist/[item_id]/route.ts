@@ -70,10 +70,10 @@ export async function PATCH(
           checklistData = JSON.parse(checklistData)
         }
         
-        if (typeof checklistData === 'object' && checklistData !== null) {
+        if (typeof checklistData === 'object' && checklistData !== null && !Array.isArray(checklistData)) {
           // Convert to proper format with boolean values
           Object.keys(checklistData).forEach(key => {
-            checklist[key] = Boolean(checklistData[key])
+            checklist[key] = Boolean((checklistData as Record<string, unknown>)[key])
           })
         }
       } catch (error) {
