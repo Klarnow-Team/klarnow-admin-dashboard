@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -116,6 +117,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch tasks
+    type TaskWithClient = Prisma.TaskGetPayload<{
+      include: {
+        client: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            plan: true,
+          }
+        }
+      }
+    }>
+
     const [tasks, total] = await Promise.all([
       prisma.task.findMany({
         where,
@@ -134,12 +148,12 @@ export async function GET(request: NextRequest) {
         },
         take: limit,
         skip: offset,
-      }),
+      }) as Promise<TaskWithClient[]>,
       prisma.task.count({ where }),
     ])
 
     // Process tasks and filter by has_responses if needed
-    let processedTasks = tasks.map(task => {
+    let processedTasks = tasks.map((task: TaskWithClient) => {
       const { responses, attachments } = parseTaskMetadata(task.metadata)
 
       return {
