@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Fetch clients by userId for answers that don't have a direct client relationship
-    const userIds = onboardingAnswers.map(answer => answer.userId)
+    const userIds = onboardingAnswers.map((answer: typeof onboardingAnswers[0]) => answer.userId)
     const clientsByUserId = await prisma.client.findMany({
       where: {
         userId: {
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     // Create a map of userId to client for quick lookup
     const clientMap = new Map(clientsByUserId.map(client => [client.userId, client]))
 
-    const formattedAnswers = onboardingAnswers.map(answer => {
+    const formattedAnswers = onboardingAnswers.map((answer: typeof onboardingAnswers[0]) => {
       // Try to get client from relationship first, then fallback to userId lookup
       const client = answer.client || clientMap.get(answer.userId)
       
