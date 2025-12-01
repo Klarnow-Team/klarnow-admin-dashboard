@@ -8,6 +8,24 @@ export const revalidate = 0
 
 export async function POST(request: NextRequest) {
   try {
+    // Verify Prisma is initialized
+    if (!prisma) {
+      console.error('❌ Prisma client is not initialized')
+      return NextResponse.json(
+        { error: 'Database connection not available' },
+        { status: 500 }
+      )
+    }
+
+    // Check if admin model exists
+    if (!('admin' in prisma)) {
+      console.error('❌ Admin model not found in Prisma client')
+      return NextResponse.json(
+        { error: 'Database model not available. Please restart the server.' },
+        { status: 500 }
+      )
+    }
+
     const { email, password } = await request.json()
 
     console.log('🔐 Login attempt:', { 
@@ -111,9 +129,26 @@ export async function POST(request: NextRequest) {
     return response
   } catch (error: any) {
     console.error('❌ Login error:', error)
-    console.error('❌ Error stack:', error.stack)
+    console.error('❌ Error name:', error?.name)
+    console.error('❌ Error message:', error?.message)
+    console.error('❌ Error code:', error?.code)
+    console.error('❌ Error stack:', error?.stack)
+    
+    // Provide more detailed error information in development
+    const errorDetails = process.env.NODE_ENV === 'development' 
+      ? {
+          message: error?.message,
+          name: error?.name,
+          code: error?.code,
+          stack: error?.stack,
+        }
+      : undefined
+
     return NextResponse.json(
-      { error: 'An error occurred during login', details: process.env.NODE_ENV === 'development' ? error.message : undefined },
+      { 
+        error: 'An error occurred during login',
+        details: errorDetails,
+      },
       { status: 500 }
     )
   }

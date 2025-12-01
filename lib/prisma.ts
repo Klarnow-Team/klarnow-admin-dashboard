@@ -13,13 +13,27 @@ if (!databaseUrl) {
 }
 
 function createPrismaClient() {
-  return new PrismaClient({
-    log:
-      process.env.NODE_ENV === 'development'
-        ? ['query', 'error', 'warn']
-        : ['error'],
-    errorFormat: 'pretty',
-  })
+  try {
+    const client = new PrismaClient({
+      log:
+        process.env.NODE_ENV === 'development'
+          ? ['query', 'error', 'warn']
+          : ['error'],
+      errorFormat: 'pretty',
+    })
+    
+    // Test connection on initialization in development
+    if (process.env.NODE_ENV === 'development') {
+      client.$connect().catch((err) => {
+        console.error('❌ Failed to connect to database:', err.message)
+      })
+    }
+    
+    return client
+  } catch (error: any) {
+    console.error('❌ Failed to create Prisma client:', error.message)
+    throw error
+  }
 }
 
 const prisma = global.prisma ?? createPrismaClient()
