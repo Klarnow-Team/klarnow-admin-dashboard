@@ -23,7 +23,7 @@ function createPrismaClient() {
         ? ['query', 'error', 'warn']
         : ['error'],
     errorFormat: 'pretty',
-  })
+  } as any)
 }
 
 const prisma = global.prisma ?? createPrismaClient()
