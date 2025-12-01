@@ -31,55 +31,54 @@ export async function GET(
     const structure = getPhaseStructureForKitType(client.plan)
     
     // Build phases state from ClientPhaseState records
-    const phasesState: Record<string, {
-      status: 'NOT_STARTED' | 'IN_PROGRESS' | 'WAITING_ON_CLIENT' | 'DONE'
-      started_at?: string | null
-      completed_at?: string | null
-      checklist: { [label: string]: boolean }
-    }> = {}
+const phasesState: Record<string, {
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'WAITING_ON_CLIENT' | 'DONE'
+  started_at?: string | null
+  completed_at?: string | null
+  checklist: { [label: string]: boolean }
+}> = {}
 
-    client.phaseStates.forEach(phaseState => {
-      let checklist: { [label: string]: boolean } = {}
-      
-      // Handle checklist from database JSON field
-      try {
-        if (phaseState.checklist) {
-          // Parse JSON if it's a string (MySQL JSON can come as string)
-          let checklistData = phaseState.checklist
-          if (typeof checklistData === 'string') {
-            try {
-              checklistData = JSON.parse(checklistData)
-            } catch (e) {
-              console.error(`❌ Failed to parse checklist JSON for ${phaseState.phaseId}:`, e)
-              checklistData = {}
-            }
-          }
-          
-          // Convert to object if it's valid
-          if (typeof checklistData === 'object' && checklistData !== null && !Array.isArray(checklistData)) {
-            const checklistObj = checklistData as any
-            // Convert all values to ensure they're booleans
-            Object.keys(checklistObj).forEach(key => {
-              const value = checklistObj[key]
-              checklist[key] = value === true || value === 'true' || value === 1
-            })
-          } else if (Array.isArray(checklistData)) {
-            console.warn(`⚠️ Checklist for ${phaseState.phaseId} is an array, converting to object`)
-            checklist = {}
-          }
+client.phaseStates.forEach((phaseState: typeof client.phaseStates[number]) => {
+  let checklist: { [label: string]: boolean } = {}
+
+  // Handle checklist from database JSON field
+  try {
+    if (phaseState.checklist) {
+      let checklistData = phaseState.checklist
+
+      if (typeof checklistData === 'string') {
+        try {
+          checklistData = JSON.parse(checklistData)
+        } catch (e) {
+          console.error(`❌ Failed to parse checklist JSON for ${phaseState.phaseId}:`, e)
+          checklistData = {}
         }
-      } catch (error) {
-        console.error(`❌ Error processing checklist for ${phaseState.phaseId}:`, error)
-        checklist = {}
       }
 
-      phasesState[phaseState.phaseId] = {
-        status: phaseState.status,
-        started_at: phaseState.startedAt?.toISOString() || null,
-        completed_at: phaseState.completedAt?.toISOString() || null,
-        checklist,
+      if (
+        typeof checklistData === 'object' &&
+        checklistData !== null &&
+        !Array.isArray(checklistData)
+      ) {
+        const checklistObj = checklistData as any
+        Object.keys(checklistObj).forEach(key => {
+          const value = checklistObj[key]
+          checklist[key] = value === true || value === 'true' || value === 1
+        })
       }
-    })
+    }
+  } catch (err) {
+    console.error(`❌ Error processing checklist for ${phaseState.phaseId}:`, err)
+    checklist = {}
+  }
+
+  phasesState[phaseState.phaseId] = {
+    status: phaseState.status,
+    started_at: phaseState.startedAt?.toISOString() || null,
+    completed_at: phaseState.completedAt?.toISOString() || null,
+    checklist,
+  }
+})
 
     // Merge structure with state
     const mergedPhases = mergePhaseStructureWithState(structure, phasesState)
