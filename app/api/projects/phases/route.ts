@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
         }
       > = {}
 
-      client.phaseStates.forEach((phaseState) => {
+      client.phaseStates.forEach((phaseState: ClientWithPhases['phaseStates'][number]) => {
         let checklist: { [label: string]: boolean } = {}
 
         try {
