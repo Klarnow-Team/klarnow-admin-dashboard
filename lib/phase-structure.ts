@@ -70,8 +70,8 @@ export const LAUNCH_KIT_STRUCTURE: PhaseStructure[] = [
     checklist_labels: [
       'Forms tested',
       'Domain connected',
-      'Final checks completed',
-      'Site is live',
+      'Final tweaks applied',
+      'Loom walkthrough recorded and shared',
     ],
   },
 ]
@@ -98,10 +98,10 @@ export const GROWTH_KIT_STRUCTURE: PhaseStructure[] = [
     subtitle: 'We write your site copy and 5 emails.',
     day_range: 'Days 3-5',
     checklist_labels: [
-      'Homepage copy ready',
-      'Offer page copy ready',
-      '5 email sequences written',
-      'Copy reviewed and approved',
+      'Draft website copy ready',
+      'Draft 5-email nurture sequence ready',
+      'You reviewed and approved copy',
+      'Any changes locked in',
     ],
   },
   {
@@ -121,15 +121,15 @@ export const GROWTH_KIT_STRUCTURE: PhaseStructure[] = [
   {
     phase_id: 'PHASE_4',
     phase_number: 4,
-    title: 'Test, launch & handover',
+    title: 'Test & handover',
     subtitle: 'We test the full journey and go live.',
     day_range: 'Days 11-14',
     checklist_labels: [
-      'Full funnel tested',
-      'Email sequences tested',
+      'Funnel tested from first visit to booked call',
       'Domain connected',
-      'Analytics set up',
-      'Site is live',
+      'Tracking checked (Analytics / pixels)',
+      '5-email sequence switched on',
+      'Loom walkthrough recorded and shared',
     ],
   },
 ]

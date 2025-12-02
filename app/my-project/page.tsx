@@ -112,13 +112,17 @@ export default function MyProjectPage() {
         throw new Error(error.error || 'Failed to update checklist item')
       }
 
-      // Refresh project data after update
-      await fetchProject()
+      // Update successful - optimistic update already applied, no need to refresh
+      // The UI is already updated, just confirm the server update succeeded
+      const result = await response.json()
+      console.log('✅ Checklist item updated successfully:', result)
     } catch (err) {
       console.error('Failed to update checklist:', err)
-      alert(err instanceof Error ? err.message : 'Failed to update checklist item')
-      // Revert optimistic update
+      // Revert optimistic update by refreshing from server only on error
       await fetchProject()
+      
+      // Show error to user
+      alert(err instanceof Error ? err.message : 'Failed to update checklist item')
     } finally {
       setUpdating(null)
     }

@@ -211,42 +211,21 @@ export default function ProjectsPage() {
         throw new Error(error.error || 'Failed to update checklist item')
       }
 
-      // Refresh projects to get latest data from database
-      const params = new URLSearchParams()
-      if (kitTypeFilter !== 'all') {
-        params.append('kit_type', kitTypeFilter)
-      }
-      if (statusFilter !== 'all') {
-        params.append('status', statusFilter)
-      }
-      
-      const refreshResponse = await fetch(`/api/projects/phases?${params.toString()}`)
-      if (refreshResponse.ok) {
-        const refreshData = await refreshResponse.json()
-        const refreshedProjects = refreshData.projects || []
-        setProjects(refreshedProjects)
-        
-        // Update selected phase and project from refreshed data
-        const refreshedProject = refreshedProjects.find((p: Project) => p.id === projectId)
-        if (refreshedProject && selectedProject && selectedPhase) {
-          setSelectedProject(refreshedProject)
-          const refreshedPhase = refreshedProject.phases.find((p: Phase) => p.id === phaseId)
-          if (refreshedPhase) {
-            setSelectedPhase(refreshedPhase)
-          }
-        }
-      } else {
-        // Fallback to full refresh
-        await fetchProjects()
-      }
+      // Update successful - optimistic update already applied, no need to refresh
+      // The UI is already updated, just confirm the server update succeeded
+      const result = await response.json()
+      console.log('✅ Checklist item updated successfully:', result)
 
       if (onUpdate) {
         onUpdate()
       }
     } catch (err) {
       console.error('Failed to update checklist:', err)
-      // Revert by refreshing from server
+      // Revert optimistic update by refreshing from server only on error
       await fetchProjects()
+      
+      // Show error to user
+      alert(err instanceof Error ? err.message : 'Failed to update checklist item')
       
       // Try to restore selected phase from refreshed projects
       const params = new URLSearchParams()
@@ -895,9 +874,23 @@ function ProgressForm({
                               <input
                                 type="checkbox"
                                 checked={item.is_done}
-                                onChange={(e) =>
-                                  onChecklistUpdate(phase.id, item.id, e.target.checked, item.label, fetchPhases, phase.phase_number, phase.phase_id)
-                                }
+                                onChange={(e) => {
+                                  // Optimistic update in local state
+                                  setPhases(prevPhases =>
+                                    prevPhases.map(p =>
+                                      p.id === phase.id
+                                        ? {
+                                            ...p,
+                                            checklist_items: p.checklist_items?.map(ci =>
+                                              ci.id === item.id ? { ...ci, is_done: e.target.checked } : ci
+                                            ),
+                                          }
+                                        : p
+                                    )
+                                  )
+                                  // Then update on server (without refresh callback)
+                                  onChecklistUpdate(phase.id, item.id, e.target.checked, item.label, () => {}, phase.phase_number, phase.phase_id)
+                                }}
                                 disabled={updatingPhase === item.id}
                                 className="h-4 w-4 rounded border-gray-300"
                               />
