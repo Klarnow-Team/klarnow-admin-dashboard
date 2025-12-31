@@ -76,36 +76,10 @@ export default function DashboardSections() {
         {/* Team Collaboration */}
         <Card className="border border-gray-200 shadow-none">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Team Collaboration</CardTitle>
-              <Button variant="outline" size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Member
-              </Button>
-            </div>
+            <CardTitle>Team Collaboration</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {[
-                { name: "Alexandra Deff", task: "Working on Github Project Repository", status: "Completed", color: "bg-green-100 text-green-800" },
-                { name: "Edwin Adenike", task: "Working on Integrate User Authentication System", status: "In Progress", color: "bg-yellow-100 text-yellow-800" },
-                { name: "Isaac Oluwatemilorun", task: "Working on Develop Search and Filter Functionality", status: "Pending", color: "bg-orange-100 text-orange-800" },
-                { name: "David Oshodi", task: "Working on Responsive Layout for Homepage", status: "In Progress", color: "bg-yellow-100 text-yellow-800" },
-              ].map((member, index) => (
-                <div key={index} className="flex items-start space-x-3">
-                  <div className="w-8 h-8 bg-[#8359ee] rounded-full flex items-center justify-center">
-                    <span className="text-white font-semibold text-sm">{member.name.charAt(0)}</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">{member.name}</p>
-                    <p className="text-sm text-gray-600">{member.task}</p>
-                    <Badge className={`mt-1 text-xs ${member.color}`}>
-                      {member.status}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {/* Empty content */}
           </CardContent>
         </Card>
 

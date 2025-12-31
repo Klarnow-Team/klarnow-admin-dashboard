@@ -14,27 +14,35 @@ export async function GET() {
       },
     })
 
-    // Transform to match the expected format for the activity page
-    const formattedSubmissions = submissions.map((submission: Prisma.QuizSubmissionGetPayload<{}>) => ({
+    const formattedSubmissions = submissions.map(
+  (submission: Prisma.QuizSubmissionGetPayload<{}>) => {
+    const firstName = submission.firstName?.trim() ?? ''
+    const lastName = submission.lastName?.trim() ?? ''
+
+    return {
       id: submission.id,
-      full_name: submission.fullName,
+      full_name: `${firstName} ${lastName}`.trim(),
+      firstName,
+      lastName,
       email: submission.email,
       phone_number: submission.phoneNumber,
       brand_name: submission.brandName,
       logo_status: submission.logoStatus,
-      brand_goals: Array.isArray(submission.brandGoals) 
-        ? submission.brandGoals as string[]
+      brand_goals: Array.isArray(submission.brandGoals)
+        ? (submission.brandGoals as string[])
         : [],
       online_presence: submission.onlinePresence,
       audience: Array.isArray(submission.audience)
-        ? submission.audience as string[]
+        ? (submission.audience as string[])
         : [],
       brand_style: submission.brandStyle,
       timeline: submission.timeline,
-      preferred_kit: submission.preferredKit || null,
+      preferred_kit: submission.preferredKit ?? null,
       created_at: submission.createdAt.toISOString(),
       updated_at: submission.updatedAt.toISOString(),
-    }))
+    }
+  }
+)
 
     return NextResponse.json(
       { 

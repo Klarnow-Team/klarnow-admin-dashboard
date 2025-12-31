@@ -1,0 +1,1 @@
+-- Placeholder migration for 20251217000000_add_referral_to_quiz_submission

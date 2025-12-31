@@ -100,9 +100,11 @@ model ClientPhaseState {
 
 model QuizSubmission {
   id             String   @id @default(uuid())
-  fullName       String   @map("full_name")
+  firstName      String   @map("first_name")
+  lastName       String   @map("last_name")
   email          String
   phoneNumber    String?  @map("phone_number")
+  referral       String?  @map("referral")
   brandName      String   @map("brand_name")
   logoStatus     String   @map("logo_status")
   brandGoals     Json     @default("[]") @map("brand_goals") // Array stored as JSON in MySQL
@@ -117,6 +119,7 @@ model QuizSubmission {
   @@index([email])
   @@map("quiz_submissions")
 }
+
 
 model Admin {
   id        String   @id @default(uuid())
