@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { CheckCircle, Users, Shield, TrendingUp } from 'lucide-react'
+import { CheckCircle, Package, Shield, TrendingUp } from 'lucide-react'
 
 interface MetricCardProps {
   title: string
@@ -47,13 +47,13 @@ function MetricCard({ title, value, description, icon: Icon, trend, isPrimary = 
 
 interface DashboardMetricsProps {
   quizCompletions: number
-  dailyActiveUsers: number
+  numberOfProjects: number
   totalAdmins: number
 }
 
 export default function DashboardMetrics({ 
   quizCompletions, 
-  dailyActiveUsers, 
+  numberOfProjects, 
   totalAdmins 
 }: DashboardMetricsProps) {
   return (
@@ -67,11 +67,11 @@ export default function DashboardMetrics({
         isPrimary={true}
       />
       <MetricCard
-        title="Daily Active Users"
-        value={dailyActiveUsers.toLocaleString()}
-        description="Users active today"
-        icon={Users}
-        trend="+8% from yesterday"
+        title="Number of Projects"
+        value={numberOfProjects.toLocaleString()}
+        description="Total projects in system"
+        icon={Package}
+        trend="+8% from last month"
       />
       <MetricCard
         title="Total Admins"

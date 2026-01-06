@@ -10,15 +10,12 @@ export async function GET(
   try {
     const { project_id } = await params
     
-    // Fetch client and phase state
-    const client = await prisma.client.findUnique({
+    // Fetch project
+    const project = await prisma.project.findUnique({
       where: { id: project_id },
-      include: {
-        phaseStates: true,
-      },
     })
 
-    if (!client) {
+    if (!project) {
       return NextResponse.json(
         { error: 'Project not found' },
         { status: 404 }
@@ -27,9 +24,9 @@ export async function GET(
 
     return NextResponse.json({
       project: {
-        id: client.id,
-        email: client.email,
-        plan: client.plan,
+        id: project.id,
+        email: project.email,
+        plan: project.plan,
       },
     })
   } catch (error: any) {
@@ -64,70 +61,69 @@ export async function PATCH(
       )
     }
 
-    // Check if client exists
-    const client = await prisma.client.findUnique({
+    // Check if project exists
+    const project = await prisma.project.findUnique({
       where: { id: project_id },
     })
 
-    if (!client) {
+    if (!project) {
       return NextResponse.json(
         { error: 'Project not found' },
         { status: 404 }
       )
     }
 
-    // Find or create phase state
-    const existingPhaseState = await prisma.clientPhaseState.findUnique({
-      where: {
-        clientId_phaseId: {
-          clientId: project_id,
-          phaseId: phaseIdString,
-        },
-      },
-    })
+    // Get current phasesState
+    let phasesState: any = {}
+    try {
+      if (project.phasesState && typeof project.phasesState === 'object') {
+        phasesState = JSON.parse(JSON.stringify(project.phasesState))
+      }
+    } catch (error) {
+      console.error('Error parsing phasesState:', error)
+      phasesState = {}
+    }
 
-    const now = new Date()
-    const updateData: any = {
+    // Get existing phase state or initialize
+    const existingPhaseState = phasesState[phaseIdString] || {
+      status: 'NOT_STARTED',
+      started_at: null,
+      completed_at: null,
+      checklist: {},
+    }
+
+    const now = new Date().toISOString()
+
+    // Update phase state
+    const updatedPhaseState: any = {
       status,
-      updatedAt: now,
+      checklist: existingPhaseState.checklist || {},
     }
 
     // Set started_at when status changes to IN_PROGRESS or later
-    if (status !== 'NOT_STARTED' && !existingPhaseState?.startedAt) {
-      updateData.startedAt = now
+    if (status !== 'NOT_STARTED' && !existingPhaseState.started_at) {
+      updatedPhaseState.started_at = now
+    } else {
+      updatedPhaseState.started_at = existingPhaseState.started_at || null
     }
 
     // Set completed_at when status changes to DONE
     if (status === 'DONE') {
-      updateData.completedAt = now
-    } else if (existingPhaseState?.completedAt) {
-      updateData.completedAt = null
+      updatedPhaseState.completed_at = now
+    } else {
+      updatedPhaseState.completed_at = existingPhaseState.completed_at || null
     }
 
-    if (existingPhaseState) {
-      // Update existing phase state
-      await prisma.clientPhaseState.update({
-        where: {
-          clientId_phaseId: {
-            clientId: project_id,
-            phaseId: phaseIdString,
-          },
-        },
-        data: updateData,
-      })
-    } else {
-      // Create new phase state
-      await prisma.clientPhaseState.create({
-        data: {
-          clientId: project_id,
-          phaseId: phaseIdString,
-          status,
-          checklist: {},
-          startedAt: status !== 'NOT_STARTED' ? now : null,
-          completedAt: status === 'DONE' ? now : null,
-        },
-      })
-    }
+    // Update phasesState with the new phase state
+    phasesState[phaseIdString] = updatedPhaseState
+
+    // Update project with new phasesState
+    await prisma.project.update({
+      where: { id: project_id },
+      data: {
+        phasesState: phasesState,
+      },
+    })
 
     console.log('✅ Phase status updated successfully:', { project_id, phaseIdString, status })
 

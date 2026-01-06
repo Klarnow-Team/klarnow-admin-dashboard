@@ -8,13 +8,14 @@ export async function GET(request: NextRequest) {
   try {
     const onboardingAnswers = await prisma.onboardingAnswer.findMany({
       include: {
-        client: {
+        project: {
           select: {
             id: true,
             name: true,
             email: true,
             plan: true,
             userId: true,
+            startedAt: true,
           },
         },
       },
@@ -23,35 +24,8 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // All userIds for fallback lookup
-    const userIds = onboardingAnswers.map(
-      (answer: typeof onboardingAnswers[number]) => answer.userId
-    )
-
-    const clientsByUserId = await prisma.client.findMany({
-      where: {
-        userId: { in: userIds },
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        plan: true,
-        userId: true,
-      },
-    })
-
-    // ⭐ FIXED: explicitly type "client"
-    const clientMap = new Map(
-      clientsByUserId.map(
-        (client: typeof clientsByUserId[number]) => [client.userId, client]
-      )
-    )
-
     const formattedAnswers = onboardingAnswers.map(
       (answer: typeof onboardingAnswers[number]) => {
-        const client = answer.client || clientMap.get(answer.userId)
-
         return {
           id: answer.id,
           user_id: answer.userId,
@@ -59,12 +33,13 @@ export async function GET(request: NextRequest) {
           completed_at: answer.completedAt.toISOString(),
           created_at: answer.createdAt.toISOString(),
           updated_at: answer.updatedAt.toISOString(),
-          client: client
+          project: answer.project
             ? {
-                id: client.id,
-                name: client.name,
-                email: client.email,
-                plan: client.plan,
+                id: answer.project.id,
+                name: answer.project.name,
+                email: answer.project.email,
+                plan: answer.project.plan,
+                startedAt: answer.project.startedAt?.toISOString() || null,
               }
             : null,
         }

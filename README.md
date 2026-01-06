@@ -4,7 +4,7 @@ A modern admin dashboard built with Next.js 16, TypeScript, Tailwind CSS, and Pr
 
 ## Features
 
-- 🔐 Authentication with Supabase
+- 🔐 Email OTP Authentication with Resend
 - 📊 Full CRUD operations
 - 🎨 Modern, responsive UI
 - ⚡ Fast and performant
@@ -13,7 +13,8 @@ A modern admin dashboard built with Next.js 16, TypeScript, Tailwind CSS, and Pr
 ## Prerequisites
 
 - Node.js 18+ installed
-- A Supabase account
+- A Resend account (for email OTP)
+- MySQL database
 
 ## Setup Instructions
 
@@ -55,34 +56,69 @@ CREATE POLICY "Users can delete items" ON items
   USING (auth.role() = 'authenticated');
 ```
 
-### 2. Create an Admin User
+### 2. Set Up Environment Variables
 
-Run the setup script to create the initial admin user with encrypted password:
+Create a `.env.local` file with the following variables:
+
+```env
+DATABASE_URL=mysql://username:password@host:port/database_name?sslaccept=strict
+RESEND_API_KEY=your_resend_api_key
+RESEND_FROM_EMAIL=your-verified-email@yourdomain.com
+
+# Optional: Default admin email for quick login (development/testing)
+DEFAULT_ADMIN_EMAIL=your-admin-email@example.com
+DEFAULT_ADMIN_OTP=000000
+```
+
+**Default Admin Email (Optional):**
+- Set `DEFAULT_ADMIN_EMAIL` to an admin email address
+- Set `DEFAULT_ADMIN_OTP` to a fixed OTP code (defaults to "000000")
+- When using the default admin email, you can login with the fixed OTP without waiting for email delivery
+- This is useful for development and testing
+
+**Getting Resend API Key:**
+1. Sign up at [resend.com](https://resend.com)
+2. Go to API Keys section
+3. Create a new API key
+4. Add it to your `.env.local` file
+
+**Resend From Email:**
+- Use a verified domain email address (e.g., `noreply@yourdomain.com`)
+- Or use the default `onboarding@resend.dev` for testing (limited)
+
+### 3. Create an Admin User
+
+Run the setup script to create the initial admin user:
 
 ```bash
 npm run create-admin
 ```
 
-This will create an admin user with:
-- Email: `izuchukwuonuoha6@gmail.com`
-- Password: `12345678` (encrypted automatically)
+This will create an admin user. You can then login using email OTP authentication.
 
-Make sure your `.env.local` file contains:
-```
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-```
-
-Alternatively, you can create the user manually through the Supabase Dashboard → Authentication → Users.
-
-### 3. Install Dependencies
+### 4. Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 4. Run the Development Server
+**Note:** Make sure to install the Resend package:
+```bash
+npm install resend
+```
+
+### 5. Run Database Migrations
+
+After updating the Prisma schema, run:
+
+```bash
+npm run prisma:generate
+npm run prisma:push
+```
+
+This will update your database schema to include OTP fields.
+
+### 6. Run the Development Server
 
 ```bash
 npm run dev
@@ -92,10 +128,13 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Usage
 
-1. Login with your admin credentials
-2. Navigate to the dashboard
-3. Create, read, update, and delete items
-4. Logout when done
+1. Go to the login page
+2. Enter your email address
+3. Click "Send OTP" - you'll receive a 6-digit code via email
+4. Enter the OTP code to login
+5. Navigate to the dashboard
+6. Create, read, update, and delete items
+7. Logout when done
 
 ## Project Structure
 
@@ -107,11 +146,13 @@ admin-dashboard/
 │   ├── layout.tsx       # Root layout
 │   ├── page.tsx         # Home page (redirects)
 │   └── globals.css      # Global styles
-├── utils/
-│   └── supabase/
-│       ├── client.ts    # Client-side Supabase client
-│       └── server.ts    # Server-side Supabase client
-├── middleware.ts        # Auth middleware
+├── app/
+│   ├── api/
+│   │   └── auth/
+│   │       ├── login/   # Login API (OTP verification)
+│   │       └── send-otp/ # Send OTP API
+├── lib/
+│   └── prisma.ts        # Prisma client
 └── .env.local           # Environment variables
 ```
 
@@ -121,17 +162,26 @@ admin-dashboard/
 
 Create a `.env.local` file with:
 
-```
+```env
 DATABASE_URL=mysql://username:password@host:port/database_name?sslaccept=strict
+RESEND_API_KEY=your_resend_api_key
+RESEND_FROM_EMAIL=your-verified-email@yourdomain.com
+
+# Optional: Default admin email for quick login
+DEFAULT_ADMIN_EMAIL=your-admin-email@example.com
+DEFAULT_ADMIN_OTP=000000
 ```
 
 ### Vercel Deployment
 
-**⚠️ IMPORTANT:** You must set the `DATABASE_URL` environment variable in Vercel for the database to work!
+**⚠️ IMPORTANT:** You must set the following environment variables in Vercel:
 
 1. Go to your Vercel project → **Settings** → **Environment Variables**
-2. Add `DATABASE_URL` with your MySQL connection string
-3. Make sure to add it to **all environments** (Production, Preview, Development)
+2. Add the following variables:
+   - `DATABASE_URL` - Your MySQL connection string
+   - `RESEND_API_KEY` - Your Resend API key
+   - `RESEND_FROM_EMAIL` - Your verified email address (optional, defaults to onboarding@resend.dev)
+3. Make sure to add them to **all environments** (Production, Preview, Development)
 4. Redeploy your application
 
 **Example DATABASE_URL format:**
@@ -148,10 +198,12 @@ After deployment, test your database connection:
 
 ## Technologies Used
 
-- **Next.js 14** - React framework
+- **Next.js 16** - React framework
 - **TypeScript** - Type safety
 - **Tailwind CSS** - Styling
-- **Supabase** - Authentication & Database
+- **Prisma** - Database ORM
+- **MySQL** - Database
+- **Resend** - Email service for OTP
 - **Lucide React** - Icons
 
 ## License

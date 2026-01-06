@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertCircle, Eye, EyeOff } from 'lucide-react'
+import { AlertCircle, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,9 +10,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
+  const [otp, setOtp] = useState('')
+  const [step, setStep] = useState<'email' | 'otp'>('email')
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
@@ -26,6 +27,52 @@ export default function LoginPage() {
     }
   }, [])
 
+  const handleSendOTP = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setSuccess(null)
+    setLoading(true)
+
+    try {
+      const response = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      let data
+      try {
+        data = await response.json()
+      } catch (jsonError) {
+        setError('Server error. Please try again later.')
+        return
+      }
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to send OTP. Please try again.')
+        return
+      }
+
+      if (data.success) {
+        setSuccess('OTP has been sent to your email address. Please check your inbox.')
+        setStep('otp')
+      }
+    } catch (error: any) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Send OTP error:', error)
+      }
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        setError('Network error. Please check your connection and try again.')
+      } else {
+        setError(error.message || 'An error occurred. Please try again.')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -38,26 +85,48 @@ export default function LoginPage() {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, otp }),
       })
 
-      const data = await response.json()
+      let data
+      try {
+        data = await response.json()
+      } catch (jsonError) {
+        setError('Server error. Please try again later.')
+        return
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Login failed')
+        setError(data.error || 'Login failed. Please check your OTP.')
+        return
       }
 
       if (data.success) {
-        console.log('✅ Login successful! Redirecting to dashboard...')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Login successful! Redirecting to dashboard...')
+        }
         router.push('/dashboard')
         router.refresh()
       }
     } catch (error: any) {
-      console.error('❌ Login failed:', error)
-      setError(error.message || 'An error occurred. Please try again.')
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Login error:', error)
+      }
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        setError('Network error. Please check your connection and try again.')
+      } else {
+        setError(error.message || 'An error occurred. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleBackToEmail = () => {
+    setStep('email')
+    setOtp('')
+    setError(null)
+    setSuccess(null)
   }
 
   return (
@@ -81,92 +150,140 @@ export default function LoginPage() {
         </div>
 
         {/* Login Form */}
-        <form onSubmit={handleLogin} className="space-y-6">
-          {/* Error Message */}
-          {error && (
-            <Alert variant="destructive" className="border-red-200 bg-red-50">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="text-red-800">{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {/* Email Field */}
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-gray-900 font-medium">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="h-12 border-gray-300 focus:border-[#8359ee] focus:ring-[#8359ee] rounded-full"
-              placeholder="enter email..."
-            />
-          </div>
-
-          {/* Password Field */}
-          <div className="space-y-2">
-            <Label htmlFor="password" className="text-gray-900 font-medium">Password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="h-12 border-gray-300 focus:border-[#8359ee] focus:ring-[#8359ee] rounded-full pr-12"
-                placeholder="enter password..."
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5" />
-                ) : (
-                  <Eye className="h-5 w-5" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Login Button */}
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full h-12 bg-[#8359ee] hover:bg-[#7245e8] text-white font-medium rounded-full"
-          >
-            {loading ? (
-              <>
-                <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Signing in...
-              </>
-            ) : (
-              'Login'
+        {step === 'email' ? (
+          <form onSubmit={handleSendOTP} className="space-y-6">
+            {/* Error Message */}
+            {error && (
+              <Alert variant="destructive" className="border-red-200 bg-red-50">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-red-800">{error}</AlertDescription>
+              </Alert>
             )}
-          </Button>
-        </form>
 
-        {/* Demo Credentials */}
+            {/* Email Field */}
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-gray-900 font-medium">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="h-12 border-gray-300 focus:border-[#8359ee] focus:ring-[#8359ee] rounded-full"
+                placeholder="enter email..."
+              />
+            </div>
+
+            {/* Send OTP Button */}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full h-12 bg-[#8359ee] hover:bg-[#7245e8] text-white font-medium rounded-full"
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Sending OTP...
+                </>
+              ) : (
+                <>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send OTP
+                </>
+              )}
+            </Button>
+          </form>
+        ) : (
+          <form onSubmit={handleLogin} className="space-y-6">
+            {/* Error Message */}
+            {error && (
+              <Alert variant="destructive" className="border-red-200 bg-red-50">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-red-800">{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Success Message */}
+            {success && (
+              <Alert className="border-green-200 bg-green-50">
+                <AlertCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">{success}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Email Display */}
+            <div className="space-y-2">
+              <Label className="text-gray-900 font-medium">Email</Label>
+              <div className="h-12 px-4 flex items-center bg-gray-50 border border-gray-300 rounded-full text-gray-700">
+                {email}
+              </div>
+            </div>
+
+            {/* OTP Field */}
+            <div className="space-y-2">
+              <Label htmlFor="otp" className="text-gray-900 font-medium">Enter OTP</Label>
+              <Input
+                id="otp"
+                type="text"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                required
+                maxLength={6}
+                className="h-12 border-gray-300 focus:border-[#8359ee] focus:ring-[#8359ee] rounded-full text-center text-2xl tracking-widest font-mono"
+                placeholder="000000"
+              />
+              <p className="text-xs text-gray-500 text-center mt-1">
+                Enter the 6-digit code sent to your email
+              </p>
+            </div>
+
+            {/* Login Button */}
+            <Button
+              type="submit"
+              disabled={loading || otp.length !== 6}
+              className="w-full h-12 bg-[#8359ee] hover:bg-[#7245e8] text-white font-medium rounded-full"
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Verifying...
+                </>
+              ) : (
+                'Login'
+              )}
+            </Button>
+
+            {/* Back to Email Button */}
+            <Button
+              type="button"
+              onClick={handleBackToEmail}
+              variant="outline"
+              className="w-full h-12 border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-full"
+            >
+              Change Email
+            </Button>
+          </form>
+        )}
+
+        {/* Info */}
         <div className="mt-8 pt-6 border-t border-gray-200">
-          <p className="text-xs text-gray-500 text-center mb-4 font-medium">Demo Credentials</p>
-          <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600 font-medium">Email:</span>
-              <code className="bg-white border border-gray-200 px-3 py-1.5 rounded text-gray-800 font-mono text-xs">
-                izuchukwuonuoha6@gmail.com
-              </code>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600 font-medium">Password:</span>
-              <code className="bg-white border border-gray-200 px-3 py-1.5 rounded text-gray-800 font-mono text-xs">
-                12345678
-              </code>
-            </div>
+          <p className="text-xs text-gray-500 text-center mb-4 font-medium">How to Login</p>
+          <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+            <p className="text-sm text-gray-600">
+              1. Enter your email address
+            </p>
+            <p className="text-sm text-gray-600">
+              2. Check your email for the OTP code
+            </p>
+            <p className="text-sm text-gray-600">
+              3. Enter the 6-digit OTP to login
+            </p>
           </div>
         </div>
       </div>

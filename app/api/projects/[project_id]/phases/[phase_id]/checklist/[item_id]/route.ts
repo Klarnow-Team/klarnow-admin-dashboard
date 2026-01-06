@@ -37,55 +37,43 @@ export async function PATCH(
       )
     }
 
-    // Check if client exists and get kit type
-    const client = await prisma.client.findUnique({
+    // Check if project exists and get kit type
+    const project = await prisma.project.findUnique({
       where: { id: project_id },
     })
 
-    if (!client) {
+    if (!project) {
       return NextResponse.json(
         { error: 'Project not found' },
         { status: 404 }
       )
     }
 
-    // Find or create phase state
-    let phaseState = await prisma.clientPhaseState.findUnique({
-      where: {
-        clientId_phaseId: {
-          clientId: project_id,
-          phaseId: phaseIdString,
-        },
-      },
-    })
+    // Get current phasesState
+    let phasesState: any = {}
+    try {
+      if (project.phasesState && typeof project.phasesState === 'object') {
+        phasesState = JSON.parse(JSON.stringify(project.phasesState))
+      }
+    } catch (error) {
+      console.error('Error parsing phasesState:', error)
+      phasesState = {}
+    }
+
+    // Get phase state or initialize
+    let phaseState = phasesState[phaseIdString] || {
+      status: 'NOT_STARTED',
+      started_at: null,
+      completed_at: null,
+      checklist: {},
+    }
 
     // Get checklist from phase state or initialize from structure
-    let checklist: { [label: string]: boolean } = {}
-    
-    if (phaseState && phaseState.checklist) {
-      try {
-        // Handle MySQL JSON - can be string or object
-        let checklistData = phaseState.checklist
-        if (typeof checklistData === 'string') {
-          checklistData = JSON.parse(checklistData)
-        }
-        
-        if (typeof checklistData === 'object' && checklistData !== null && !Array.isArray(checklistData)) {
-          // Convert to proper format with boolean values
-          Object.keys(checklistData).forEach(key => {
-            checklist[key] = Boolean((checklistData as Record<string, unknown>)[key])
-          })
-        }
-      } catch (error) {
-        console.error(`❌ Error parsing checklist from database:`, error)
-        // If parsing fails, initialize from structure
-        checklist = {}
-      }
-    }
+    let checklist: { [label: string]: boolean } = phaseState.checklist || {}
     
     // If checklist is empty, initialize from phase structure
     if (Object.keys(checklist).length === 0) {
-      const structure = getPhaseStructureForKitType(client.plan)
+      const structure = getPhaseStructureForKitType(project.plan)
       const phaseStructure = structure.find(p => p.phase_id === phaseIdString)
       if (phaseStructure) {
         phaseStructure.checklist_labels.forEach(l => {
@@ -110,73 +98,34 @@ export async function PATCH(
       is_done, 
       originalChecklist: checklist,
       cleanChecklist,
-      existingPhaseState: !!phaseState 
     })
 
-    // Create or update phase state with updated checklist
-    if (phaseState) {
-      const updated = await prisma.clientPhaseState.update({
-        where: {
-          clientId_phaseId: {
-            clientId: project_id,
-            phaseId: phaseIdString,
-          },
-        },
-        data: {
-          checklist: cleanChecklist, // Prisma will handle JSON serialization for MySQL
-          updatedAt: new Date(),
-        },
-      })
-      console.log('✅ Phase state updated in database:', { 
-        id: updated.id, 
-        clientId: updated.clientId,
-        phaseId: updated.phaseId,
-        checklist: updated.checklist,
-        checklistType: typeof updated.checklist
-      })
-    } else {
-      const created = await prisma.clientPhaseState.create({
-        data: {
-          clientId: project_id,
-          phaseId: phaseIdString,
-          status: 'NOT_STARTED',
-          checklist: cleanChecklist, // Prisma will handle JSON serialization for MySQL
-        },
-      })
-      console.log('✅ Phase state created in database:', { 
-        id: created.id, 
-        clientId: created.clientId,
-        phaseId: created.phaseId,
-        checklist: created.checklist,
-        checklistType: typeof created.checklist
-      })
+    // Update phase state with new checklist
+    phasesState[phaseIdString] = {
+      ...phaseState,
+      checklist: cleanChecklist,
     }
 
-    // Verify the update was saved
-    const verifyState = await prisma.clientPhaseState.findUnique({
-      where: {
-        clientId_phaseId: {
-          clientId: project_id,
-          phaseId: phaseIdString,
-        },
+    // Update project with new phasesState
+    const updated = await prisma.project.update({
+      where: { id: project_id },
+      data: {
+        phasesState: phasesState,
       },
     })
 
-    if (!verifyState) {
-      console.error('❌ Failed to verify checklist was saved')
-      return NextResponse.json(
-        { error: 'Failed to verify checklist was saved' },
-        { status: 500 }
-      )
-    }
+    console.log('✅ Phase state updated in database:', { 
+      projectId: updated.id,
+      phaseId: phaseIdString,
+      checklist: phasesState[phaseIdString].checklist,
+    })
 
-    console.log('✅ Verified checklist saved to database:', verifyState.checklist)
     console.log('✅ Checklist item updated successfully:', { project_id, phaseIdString, label, is_done })
 
     return NextResponse.json({
       success: true,
       message: 'Checklist item updated successfully',
-      checklist: verifyState.checklist,
+      checklist: cleanChecklist,
       phase_id: phaseIdString,
     })
   } catch (error: any) {

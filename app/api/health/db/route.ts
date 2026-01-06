@@ -32,7 +32,7 @@ export async function GET() {
     await prisma.$queryRaw`SELECT 1`
     
     // Get database info
-    const clientCount = await prisma.client.count()
+    const projectCount = await prisma.project.count()
     const quizCount = await prisma.quizSubmission.count()
     const taskCount = await prisma.task.count()
 
@@ -42,7 +42,7 @@ export async function GET() {
         message: 'Database connection successful',
         connected: true,
         database: {
-          clients: clientCount,
+          projects: projectCount,
           quizSubmissions: quizCount,
           tasks: taskCount,
         },

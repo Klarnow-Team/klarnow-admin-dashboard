@@ -12,17 +12,9 @@ export async function GET(request: NextRequest) {
     const kitType = searchParams.get('kit_type') as 'LAUNCH' | 'GROWTH' | null
     const status = searchParams.get('status') as 'NOT_STARTED' | 'IN_PROGRESS' | 'WAITING_ON_CLIENT' | 'DONE' | null
 
-    // ---- FIX: STRONG TYPE THE PRISMA RESPONSE ----
-    type ClientWithPhases = Prisma.ClientGetPayload<{
-      include: { phaseStates: true }
-    }>
-
-    const clients: ClientWithPhases[] = await prisma.client.findMany({
+    const projects = await prisma.project.findMany({
       where: {
         ...(kitType && { plan: kitType }),
-      },
-      include: {
-        phaseStates: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -68,10 +60,11 @@ export async function GET(request: NextRequest) {
       }>
     }
 
-    const projects = clients.map((client) => {
-      const structure = getPhaseStructureForKitType(client.plan)
+    const formattedProjects = projects.map((project) => {
+      const structure = getPhaseStructureForKitType(project.plan)
 
-      const phasesState: Record<
+      // Parse phasesState from JSON
+      let phasesState: Record<
         string,
         {
           status: 'NOT_STARTED' | 'IN_PROGRESS' | 'WAITING_ON_CLIENT' | 'DONE'
@@ -81,39 +74,23 @@ export async function GET(request: NextRequest) {
         }
       > = {}
 
-      client.phaseStates.forEach((phaseState: ClientWithPhases['phaseStates'][number]) => {
-        let checklist: { [label: string]: boolean } = {}
-
-        try {
-          if (phaseState.checklist) {
-            let checklistData = phaseState.checklist
-
-            if (typeof checklistData === 'string') {
-              try {
-                checklistData = JSON.parse(checklistData)
-              } catch {
-                checklistData = {}
-              }
+      try {
+        if (project.phasesState && typeof project.phasesState === 'object') {
+          const state = project.phasesState as any
+          Object.keys(state).forEach((phaseId) => {
+            const phaseData = state[phaseId]
+            phasesState[phaseId] = {
+              status: phaseData.status || 'NOT_STARTED',
+              started_at: phaseData.started_at || null,
+              completed_at: phaseData.completed_at || null,
+              checklist: phaseData.checklist || {},
             }
-
-            if (typeof checklistData === 'object' && checklistData !== null && !Array.isArray(checklistData)) {
-              Object.keys(checklistData).forEach((key) => {
-                const value = (checklistData as any)[key]
-                checklist[key] = value === true || value === 'true' || value === 1
-              })
-            }
-          }
-        } catch {
-          checklist = {}
+          })
         }
-
-        phasesState[phaseState.phaseId] = {
-          status: phaseState.status,
-          started_at: phaseState.startedAt?.toISOString() || null,
-          completed_at: phaseState.completedAt?.toISOString() || null,
-          checklist,
-        }
-      })
+      } catch (error) {
+        console.error('Error parsing phasesState:', error)
+        phasesState = {}
+      }
 
       const mergedPhases = mergePhaseStructureWithState(structure, phasesState)
 
@@ -121,22 +98,18 @@ export async function GET(request: NextRequest) {
 
       const phases = mergedPhases.map((phase: MergedPhase) => {
         const checklistItems = phase.checklist.map((item: { label: string; is_done: boolean }, index: number) => ({
-          id: `${client.id}-${phase.phase_id}-${index}`,
+          id: `${project.id}-${phase.phase_id}-${index}`,
           phase_id: phase.phase_id,
           label: item.label,
           is_done: item.is_done,
           sort_order: index + 1,
-          created_at: client.createdAt.toISOString(),
-          updated_at: client.updatedAt.toISOString(),
+          created_at: project.createdAt.toISOString(),
+          updated_at: project.updatedAt.toISOString(),
         }))
 
-        const hasDatabaseChecklist =
-          phasesState[phase.phase_id]?.checklist &&
-          Object.keys(phasesState[phase.phase_id].checklist).length > 0
-
         return {
-          id: `${client.id}-${phase.phase_id}`,
-          project_id: client.id,
+          id: `${project.id}-${phase.phase_id}`,
+          project_id: project.id,
           phase_number: phase.phase_number,
           phase_id: phase.phase_id,
           title: phase.title,
@@ -145,33 +118,33 @@ export async function GET(request: NextRequest) {
           status: phase.status,
           started_at: phase.started_at,
           completed_at: phase.completed_at,
-          created_at: client.createdAt.toISOString(),
-          updated_at: client.updatedAt.toISOString(),
+          created_at: project.createdAt.toISOString(),
+          updated_at: project.updatedAt.toISOString(),
           checklist_items: checklistItems,
           phase_links: [],
         }
       })
 
       return {
-        id: client.id,
-        user_id: client.userId,
-        kit_type: client.plan,
-        current_day_of_14: client.currentDayOf14,
-        next_from_us: client.nextFromUs,
-        next_from_you: client.nextFromYou,
-        onboarding_finished: client.onboardingPercent === 100,
-        onboarding_percent: client.onboardingPercent,
-        created_at: client.createdAt.toISOString(),
-        updated_at: client.updatedAt.toISOString(),
-        email: client.email,
+        id: project.id,
+        user_id: project.userId,
+        kit_type: project.plan,
+        current_day_of_14: project.currentDayOf14,
+        next_from_us: project.nextFromUs,
+        next_from_you: project.nextFromYou,
+        onboarding_finished: true, // Projects are created after onboarding
+        onboarding_percent: 100,
+        created_at: project.createdAt.toISOString(),
+        updated_at: project.updatedAt.toISOString(),
+        email: project.email,
         phases,
       }
     })
 
     // Filter by status
-    let filteredProjects: Project[] = projects
+    let filteredProjects: Project[] = formattedProjects
     if (status) {
-      filteredProjects = projects.filter((project: Project) => {
+      filteredProjects = formattedProjects.filter((project: Project) => {
         return project.phases.some((phase) => phase.status === status)
       })
     }

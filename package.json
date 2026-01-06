@@ -9,11 +9,13 @@
     "start": "next start",
     "lint": "next lint",
     "create-admin": "node scripts/create-admin.js",
+    "create-admin-prisma": "node scripts/create-admin-prisma.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:push": "prisma db push",
     "prisma:studio": "node scripts/prisma-studio.js",
-    "db:studio": "node scripts/prisma-studio.js"
+    "db:studio": "node scripts/prisma-studio.js",
+    "import-csv": "tsx scripts/import-csv.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
@@ -28,6 +30,7 @@
     "bcrypt": "^6.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "csv-parse": "^6.1.0",
     "dotenv": "^17.2.3",
     "eslint": "^9.38.0",
     "eslint-config-next": "^16.0.0",
@@ -35,6 +38,7 @@
     "next": "^16.1.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "resend": "^4.8.0",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.6.2",
@@ -49,6 +53,7 @@
     "dotenv-cli": "^11.0.0",
     "postcss": "^8.5.6",
     "prisma": "^6.19.0",
-    "tailwindcss": "^4.1.16"
+    "tailwindcss": "^4.1.16",
+    "tsx": "^4.19.2"
   }
 }

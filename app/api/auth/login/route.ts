@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
-import bcrypt from 'bcrypt'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -40,23 +39,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { email, password } = await request.json()
+    const { email, otp } = await request.json()
 
     console.log('🔐 Login attempt:', { 
       email, 
-      passwordLength: password?.length
+      otpLength: otp?.length
     })
 
-    if (!email || !password) {
-      console.log('❌ Missing email or password')
+    if (!email || !otp) {
+      console.log('❌ Missing email or OTP')
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: 'Email and OTP are required' },
         { status: 400 }
       )
     }
 
     // Normalize email (trim and lowercase for comparison)
     const normalizedEmail = email.trim().toLowerCase()
+
+    // Check if this is the default admin email
+    const defaultAdminEmail = process.env.DEFAULT_ADMIN_EMAIL?.trim().toLowerCase()
+    const defaultAdminOTP = process.env.DEFAULT_ADMIN_OTP || '000000'
+    const isDefaultAdmin = defaultAdminEmail && normalizedEmail === defaultAdminEmail
 
     // Ensure database connection is established (important for serverless)
     try {
@@ -73,7 +77,8 @@ export async function POST(request: NextRequest) {
         id: true,
         email: true,
         name: true,
-        password: true,
+        otpCode: true,
+        otpExpiresAt: true,
         role: true,
       },
     })
@@ -81,32 +86,62 @@ export async function POST(request: NextRequest) {
     if (!admin) {
       console.log('❌ Admin not found:', normalizedEmail)
       return NextResponse.json(
-        { error: 'Invalid email or password' },
+        { error: 'Invalid email or OTP' },
         { status: 401 }
       )
     }
 
-    // Verify password if stored
-    if (admin.password) {
-      const passwordMatch = await bcrypt.compare(password, admin.password)
-      if (!passwordMatch) {
-        console.log('❌ Invalid password for admin:', normalizedEmail)
+    // For default admin, allow login with the default OTP even if no OTP is stored
+    if (isDefaultAdmin && otp === defaultAdminOTP) {
+      console.log('✅ Default admin login with default OTP:', normalizedEmail)
+      // Set OTP in database for consistency
+      await prisma.admin.update({
+        where: { id: admin.id },
+        data: {
+          otpCode: defaultAdminOTP,
+          otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        },
+      })
+    } else {
+      // Regular OTP verification for non-default admins
+      // Verify OTP
+      if (!admin.otpCode || !admin.otpExpiresAt) {
+        console.log('❌ No OTP found for admin:', normalizedEmail)
         return NextResponse.json(
-          { error: 'Invalid email or password' },
+          { error: 'No OTP found. Please request a new OTP.' },
           { status: 401 }
         )
       }
-    } else {
-      // If no password is stored, we might want to allow login without password
-      // or require password setup. For security, we'll reject login without password.
-      console.log('❌ Admin has no password set:', normalizedEmail)
-      return NextResponse.json(
-        { error: 'Password not configured. Please contact administrator.' },
-        { status: 401 }
-      )
+
+      // Check if OTP has expired
+      if (new Date() > admin.otpExpiresAt) {
+        console.log('❌ OTP expired for admin:', normalizedEmail)
+        return NextResponse.json(
+          { error: 'OTP has expired. Please request a new OTP.' },
+          { status: 401 }
+        )
+      }
+
+      // Verify OTP code
+      if (admin.otpCode !== otp) {
+        console.log('❌ Invalid OTP for admin:', normalizedEmail)
+        return NextResponse.json(
+          { error: 'Invalid OTP. Please check your email and try again.' },
+          { status: 401 }
+        )
+      }
     }
 
-    console.log('✅ Credentials validated, setting session cookie...')
+    // Clear OTP after successful verification
+    await prisma.admin.update({
+      where: { id: admin.id },
+      data: {
+        otpCode: null,
+        otpExpiresAt: null,
+      },
+    })
+
+    console.log('✅ OTP validated, setting session cookie...')
 
     // Set session cookie with proper settings for Vercel/production
     const cookieStore = await cookies()

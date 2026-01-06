@@ -10,15 +10,12 @@ export async function GET(
   try {
     const { project_id } = await params
     
-    // Fetch client from database
-    const client = await prisma.client.findUnique({
+    // Fetch project from database
+    const project = await prisma.project.findUnique({
       where: { id: project_id },
-      include: {
-        phaseStates: true,
-      },
     })
 
-    if (!client) {
+    if (!project) {
       return NextResponse.json(
         { error: 'Project not found' },
         { status: 404 }
@@ -27,13 +24,13 @@ export async function GET(
 
     return NextResponse.json({
       project: {
-        id: client.id,
-        email: client.email,
-        plan: client.plan,
-        current_day_of_14: client.currentDayOf14,
-        next_from_us: client.nextFromUs,
-        next_from_you: client.nextFromYou,
-        onboarding_percent: client.onboardingPercent,
+        id: project.id,
+        email: project.email,
+        plan: project.plan,
+        current_day_of_14: project.currentDayOf14,
+        next_from_us: project.nextFromUs,
+        next_from_you: project.nextFromYou,
+        started_at: project.startedAt?.toISOString() || null,
       },
     })
   } catch (error: any) {
@@ -54,12 +51,12 @@ export async function PATCH(
     const body = await request.json()
     const { current_day_of_14, next_from_us, next_from_you } = body
 
-    // Check if client exists
-    const client = await prisma.client.findUnique({
+    // Check if project exists
+    const project = await prisma.project.findUnique({
       where: { id: project_id },
     })
 
-    if (!client) {
+    if (!project) {
       return NextResponse.json(
         { error: 'Project not found' },
         { status: 404 }
@@ -87,8 +84,8 @@ export async function PATCH(
       updateData.nextFromYou = next_from_you
     }
 
-    // Update client
-    await prisma.client.update({
+    // Update project
+    await prisma.project.update({
       where: { id: project_id },
       data: updateData,
     })

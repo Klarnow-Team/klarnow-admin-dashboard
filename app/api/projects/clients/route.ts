@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
-    const clients = await prisma.client.findMany({
+    const projects = await prisma.project.findMany({
       select: {
         id: true,
         userId: true,
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
         email: true,
         plan: true,
         currentDayOf14: true,
-        onboardingPercent: true,
+        startedAt: true,
         createdAt: true,
       },
       orderBy: {
@@ -22,24 +22,23 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // 🔥 FIX: Add type annotation for "client"
-    const formattedClients = clients.map(
-      (client: typeof clients[number]) => ({
-        id: client.id,
-        user_id: client.userId,
-        name: client.name,
-        email: client.email,
-        plan: client.plan,
-        current_day_of_14: client.currentDayOf14,
-        onboarding_percent: client.onboardingPercent,
-        created_at: client.createdAt.toISOString(),
+    const formattedProjects = projects.map(
+      (project: typeof projects[number]) => ({
+        id: project.id,
+        user_id: project.userId,
+        name: project.name,
+        email: project.email,
+        plan: project.plan,
+        current_day_of_14: project.currentDayOf14,
+        started_at: project.startedAt?.toISOString() || null,
+        created_at: project.createdAt.toISOString(),
       })
     )
 
     return NextResponse.json({
       success: true,
-      data: formattedClients,
-      count: formattedClients.length,
+      data: formattedProjects,
+      count: formattedProjects.length,
     })
   } catch (error: any) {
     console.error('❌ Error in GET /api/projects/clients:', error)

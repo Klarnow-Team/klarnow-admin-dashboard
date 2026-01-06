@@ -36,13 +36,13 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams
-    const clientId = searchParams.get('client_id')
+    const projectId = searchParams.get('project_id')
     const status = searchParams.get('status') as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | null
     const type = searchParams.get('type') as 'UPLOAD_FILE' | 'SEND_INFO' | 'PROVIDE_DETAILS' | 'REVIEW' | 'OTHER' | null
 
-    type TaskWithClient = Prisma.TaskGetPayload<{
+    type TaskWithProject = Prisma.TaskGetPayload<{
       include: {
-        client: {
+        project: {
           select: {
             id: true,
             name: true,
@@ -55,12 +55,12 @@ export async function GET(request: NextRequest) {
 
     const tasks = await prisma.task.findMany({
       where: {
-        ...(clientId && { clientId }),
+        ...(projectId && { projectId }),
         ...(status && { status }),
         ...(type && { type }),
       },
       include: {
-        client: {
+        project: {
           select: {
             id: true,
             name: true,
@@ -74,9 +74,9 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    const formattedTasks = tasks.map((task: TaskWithClient) => ({
+    const formattedTasks = tasks.map((task: TaskWithProject) => ({
       id: task.id,
-      client_id: task.clientId,
+      project_id: task.projectId,
       title: task.title,
       description: task.description,
       type: task.type,
@@ -88,11 +88,11 @@ export async function GET(request: NextRequest) {
       created_by: task.createdBy,
       created_at: task.createdAt.toISOString(),
       updated_at: task.updatedAt.toISOString(),
-      client: task.client ? {
-        id: task.client.id,
-        name: task.client.name,
-        email: task.client.email,
-        plan: task.client.plan,
+      project: task.project ? {
+        id: task.project.id,
+        name: task.project.name,
+        email: task.project.email,
+        plan: task.project.plan,
       } : null,
     }))
 
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const {
-      client_id,
+      project_id,
       title,
       description,
       type = 'OTHER',
@@ -152,28 +152,28 @@ export async function POST(request: NextRequest) {
       created_by,
     } = body
 
-    if (!client_id || !title) {
+    if (!project_id || !title) {
       return NextResponse.json(
-        { success: false, error: 'client_id and title are required' },
+        { success: false, error: 'project_id and title are required' },
         { status: 400 }
       )
     }
 
-    // Verify client exists
-    const client = await prisma.client.findUnique({
-      where: { id: client_id },
+    // Verify project exists
+    const project = await prisma.project.findUnique({
+      where: { id: project_id },
     })
 
-    if (!client) {
+    if (!project) {
       return NextResponse.json(
-        { success: false, error: 'Client not found' },
+        { success: false, error: 'Project not found' },
         { status: 404 }
       )
     }
 
     const task = await prisma.task.create({
       data: {
-        clientId: client_id,
+        projectId: project_id,
         title,
         description,
         type: type || 'OTHER',
@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
         createdBy: created_by || null,
       },
       include: {
-        client: {
+        project: {
           select: {
             id: true,
             name: true,
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
 
     const formattedTask = {
       id: task.id,
-      client_id: task.clientId,
+      project_id: task.projectId,
       title: task.title,
       description: task.description,
       type: task.type,
@@ -209,11 +209,11 @@ export async function POST(request: NextRequest) {
       created_by: task.createdBy,
       created_at: task.createdAt.toISOString(),
       updated_at: task.updatedAt.toISOString(),
-      client: task.client ? {
-        id: task.client.id,
-        name: task.client.name,
-        email: task.client.email,
-        plan: task.client.plan,
+      project: task.project ? {
+        id: task.project.id,
+        name: task.project.name,
+        email: task.project.email,
+        plan: task.project.plan,
       } : null,
     }
 

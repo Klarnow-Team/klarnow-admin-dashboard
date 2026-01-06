@@ -12,15 +12,12 @@ export async function GET(
   try {
     const { project_id } = await params
     
-    // Fetch client with phase states
-    const client = await prisma.client.findUnique({
+    // Fetch project
+    const project = await prisma.project.findUnique({
       where: { id: project_id },
-      include: {
-        phaseStates: true,
-      },
     })
 
-    if (!client) {
+    if (!project) {
       return NextResponse.json(
         { error: 'Project not found' },
         { status: 404 }
@@ -28,57 +25,32 @@ export async function GET(
     }
 
     // Get phase structure for this kit type
-    const structure = getPhaseStructureForKitType(client.plan)
+    const structure = getPhaseStructureForKitType(project.plan)
     
-    // Build phases state from ClientPhaseState records
-const phasesState: Record<string, {
-  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'WAITING_ON_CLIENT' | 'DONE'
-  started_at?: string | null
-  completed_at?: string | null
-  checklist: { [label: string]: boolean }
-}> = {}
+    // Build phases state from phasesState JSON field
+    const phasesState: Record<string, {
+      status: 'NOT_STARTED' | 'IN_PROGRESS' | 'WAITING_ON_CLIENT' | 'DONE'
+      started_at?: string | null
+      completed_at?: string | null
+      checklist: { [label: string]: boolean }
+    }> = {}
 
-client.phaseStates.forEach((phaseState: typeof client.phaseStates[number]) => {
-  let checklist: { [label: string]: boolean } = {}
-
-  // Handle checklist from database JSON field
-  try {
-    if (phaseState.checklist) {
-      let checklistData = phaseState.checklist
-
-      if (typeof checklistData === 'string') {
-        try {
-          checklistData = JSON.parse(checklistData)
-        } catch (e) {
-          console.error(`❌ Failed to parse checklist JSON for ${phaseState.phaseId}:`, e)
-          checklistData = {}
-        }
-      }
-
-      if (
-        typeof checklistData === 'object' &&
-        checklistData !== null &&
-        !Array.isArray(checklistData)
-      ) {
-        const checklistObj = checklistData as any
-        Object.keys(checklistObj).forEach(key => {
-          const value = checklistObj[key]
-          checklist[key] = value === true || value === 'true' || value === 1
+    try {
+      if (project.phasesState && typeof project.phasesState === 'object') {
+        const state = project.phasesState as any
+        Object.keys(state).forEach((phaseId) => {
+          const phaseData = state[phaseId]
+          phasesState[phaseId] = {
+            status: phaseData.status || 'NOT_STARTED',
+            started_at: phaseData.started_at || null,
+            completed_at: phaseData.completed_at || null,
+            checklist: phaseData.checklist || {},
+          }
         })
       }
+    } catch (error) {
+      console.error('Error parsing phasesState:', error)
     }
-  } catch (err) {
-    console.error(`❌ Error processing checklist for ${phaseState.phaseId}:`, err)
-    checklist = {}
-  }
-
-  phasesState[phaseState.phaseId] = {
-    status: phaseState.status,
-    started_at: phaseState.startedAt?.toISOString() || null,
-    completed_at: phaseState.completedAt?.toISOString() || null,
-    checklist,
-  }
-})
 
     // Merge structure with state
     const mergedPhases = mergePhaseStructureWithState(structure, phasesState)
@@ -88,18 +60,18 @@ client.phaseStates.forEach((phaseState: typeof client.phaseStates[number]) => {
     // Transform to the format expected by the frontend
     const phases = mergedPhases.map((phase: MergedPhase) => {
       const checklistItems = phase.checklist.map((item: { label: string; is_done: boolean }, index: number) => ({
-        id: `${client.id}-${phase.phase_id}-${index}`,
+        id: `${project.id}-${phase.phase_id}-${index}`,
         phase_id: phase.phase_id,
         label: item.label,
         is_done: item.is_done,
         sort_order: index + 1,
-        created_at: client.createdAt.toISOString(),
-        updated_at: client.updatedAt.toISOString(),
+        created_at: project.createdAt.toISOString(),
+        updated_at: project.updatedAt.toISOString(),
       }))
 
       return {
-        id: `${client.id}-${phase.phase_id}`,
-        project_id: client.id,
+        id: `${project.id}-${phase.phase_id}`,
+        project_id: project.id,
         phase_number: phase.phase_number,
         phase_id: phase.phase_id,
         title: phase.title,
@@ -108,8 +80,8 @@ client.phaseStates.forEach((phaseState: typeof client.phaseStates[number]) => {
         status: phase.status,
         started_at: phase.started_at,
         completed_at: phase.completed_at,
-        created_at: client.createdAt.toISOString(),
-        updated_at: client.updatedAt.toISOString(),
+        created_at: project.createdAt.toISOString(),
+        updated_at: project.updatedAt.toISOString(),
         checklist_items: checklistItems,
         phase_links: [],
       }

@@ -46,56 +46,37 @@ model OnboardingAnswer {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relationships
-  client Client?
+  project Project? @relation("OnboardingAnswerToProject")
 
   @@index([userId])
   @@map("onboarding_answers")
 }
 
-model Client {
+model Project {
   id                  String   @id @default(uuid())
+  onboardingAnswerId  String   @unique @map("onboarding_answer_id")
   userId              String   @map("user_id")
   name                String?
   email               String
-  plan                KitType
-  onboardingAnswersId String?  @unique @map("onboarding_answers_id")
+  plan                KitType  // LAUNCH or GROWTH
+  startedAt           DateTime? @map("started_at") // When project actually started
+  currentDayOf14      Int?     @map("current_day_of_14")
   nextFromUs          String?  @map("next_from_us") @db.Text
   nextFromYou         String?  @map("next_from_you") @db.Text
-  currentDayOf14      Int?     @map("current_day_of_14")
-  onboardingPercent   Int      @default(0) @map("onboarding_percent")
+  phasesState         Json     @default("{}") // Stores all phase states as JSON
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
   // Relationships
-  onboardingAnswer OnboardingAnswer?  @relation(fields: [onboardingAnswersId], references: [id], onDelete: SetNull)
-  phaseStates      ClientPhaseState[]
-  tasks            Task[]
+  onboardingAnswer    OnboardingAnswer @relation("OnboardingAnswerToProject", fields: [onboardingAnswerId], references: [id], onDelete: Cascade)
+  tasks               Task[]
 
   @@unique([userId, plan])
   @@index([userId])
   @@index([email])
   @@index([plan])
-  @@map("clients")
-}
-
-model ClientPhaseState {
-  id          String    @id @default(uuid())
-  clientId    String    @map("client_id")
-  phaseId     String    @map("phase_id") // PHASE_1, PHASE_2, PHASE_3, PHASE_4
-  status      Status    @default(NOT_STARTED)
-  checklist   Json      @default("{}") // { "label": true/false }
-  startedAt   DateTime? @map("started_at")
-  completedAt DateTime? @map("completed_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-
-  // Relationships
-  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
-
-  @@unique([clientId, phaseId])
-  @@index([clientId])
-  @@index([phaseId])
-  @@index([status])
-  @@map("client_phase_state")
+  @@index([onboardingAnswerId])
+  @@map("projects")
 }
 
 model QuizSubmission {
@@ -122,14 +103,16 @@ model QuizSubmission {
 
 
 model Admin {
-  id        String   @id @default(uuid())
-  userId    String?  @map("user_id") // Optional: for future auth system integration
-  email     String   @unique
-  name      String
-  password  String?  // Optional: if you want to store hashed passwords
-  role      String   @default("admin")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id          String    @id @default(uuid())
+  userId      String?   @map("user_id") // Optional: for future auth system integration
+  email       String    @unique
+  name        String
+  password    String?   // Optional: if you want to store hashed passwords
+  otpCode     String?   @map("otp_code") // OTP code for email authentication
+  otpExpiresAt DateTime? @map("otp_expires_at") // OTP expiration timestamp
+  role        String    @default("admin")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
   @@index([userId])
   @@index([email])
@@ -138,7 +121,7 @@ model Admin {
 
 model Task {
   id          String     @id @default(uuid())
-  clientId    String     @map("client_id")
+  projectId   String     @map("project_id")
   title       String     @db.Text
   description String?    @db.Text
   type        TaskType   @default(OTHER)
@@ -152,9 +135,9 @@ model Task {
   updatedAt   DateTime   @updatedAt @map("updated_at")
 
   // Relationships
-  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@index([clientId])
+  @@index([projectId])
   @@index([status])
   @@index([type])
   @@index([dueDate])

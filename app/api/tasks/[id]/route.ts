@@ -15,7 +15,7 @@ export async function GET(
     const task = await prisma.task.findUnique({
       where: { id },
       include: {
-        client: {
+        project: {
           select: {
             id: true,
             name: true,
@@ -35,7 +35,7 @@ export async function GET(
 
     const formattedTask = {
       id: task.id,
-      client_id: task.clientId,
+      project_id: task.projectId,
       title: task.title,
       description: task.description,
       type: task.type,
@@ -47,11 +47,11 @@ export async function GET(
       created_by: task.createdBy,
       created_at: task.createdAt.toISOString(),
       updated_at: task.updatedAt.toISOString(),
-      client: task.client ? {
-        id: task.client.id,
-        name: task.client.name,
-        email: task.client.email,
-        plan: task.client.plan,
+      project: task.project ? {
+        id: task.project.id,
+        name: task.project.name,
+        email: task.project.email,
+        plan: task.project.plan,
       } : null,
     }
 
@@ -125,7 +125,7 @@ export async function PATCH(
       where: { id },
       data: updateData,
       include: {
-        client: {
+        project: {
           select: {
             id: true,
             name: true,
@@ -138,7 +138,7 @@ export async function PATCH(
 
     const formattedTask = {
       id: updatedTask.id,
-      client_id: updatedTask.clientId,
+      project_id: updatedTask.projectId,
       title: updatedTask.title,
       description: updatedTask.description,
       type: updatedTask.type,
@@ -150,11 +150,11 @@ export async function PATCH(
       created_by: updatedTask.createdBy,
       created_at: updatedTask.createdAt.toISOString(),
       updated_at: updatedTask.updatedAt.toISOString(),
-      client: updatedTask.client ? {
-        id: updatedTask.client.id,
-        name: updatedTask.client.name,
-        email: updatedTask.client.email,
-        plan: updatedTask.client.plan,
+      project: updatedTask.project ? {
+        id: updatedTask.project.id,
+        name: updatedTask.project.name,
+        email: updatedTask.project.email,
+        plan: updatedTask.project.plan,
       } : null,
     }
 
