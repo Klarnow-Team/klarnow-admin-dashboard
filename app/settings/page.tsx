@@ -27,8 +27,8 @@ export default function SettingsPage() {
     if (user) {
       setFormData(prev => ({
         ...prev,
-        name: user.name,
-        email: user.email
+        name: user.name || '',
+        email: user.email || ''
       }))
       console.log('🎯 [Settings] User ID available:', user.id)
     }
@@ -72,7 +72,7 @@ export default function SettingsPage() {
                     <Input
                       id="name"
                       type="text"
-                      value={formData.name}
+                      value={formData.name || ''}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       placeholder="Enter your full name"
                     />
@@ -83,7 +83,7 @@ export default function SettingsPage() {
                     <Input
                       id="email"
                       type="email"
-                      value={formData.email}
+                      value={formData.email || ''}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       placeholder="Enter your email"
                     />

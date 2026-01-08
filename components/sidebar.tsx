@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Activity, Settings, Menu, X, Bell, MessageSquare, Download, Smartphone, Shield, BarChart3, UserCircle, FolderKanban, ClipboardList } from 'lucide-react'
+import { LayoutDashboard, Activity, Settings, Menu, X, Bell, MessageSquare, Download, Smartphone, Shield, BarChart3, UserCircle, FolderKanban, ClipboardList, FileSearch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -14,8 +14,13 @@ const navigation = [
     icon: LayoutDashboard,
   },
   {
-    name: 'Activity',
-    href: '/activity',
+    name: 'Leads Audit',
+    href: '/leads-audit',
+    icon: FileSearch,
+  },
+  {
+    name: 'Brand Submission',
+    href: '/brand-submission',
     icon: Activity,
   },
   {

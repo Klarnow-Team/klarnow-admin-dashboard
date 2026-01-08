@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/sidebar";
+import { apiService, ApiError, QuizSubmission } from "@/lib/api";
 import {
   Card,
   CardContent,
@@ -50,26 +51,8 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-interface QuizSubmission {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone_number?: string | null;
-  referral?: string | null;
-  brand_name: string;
-  logo_status: string;
-  brand_goals: string[];
-  online_presence: string;
-  audience: string[];
-  brand_style: string;
-  timeline: string;
-  preferred_kit?: string | null;
-  created_at: string;
-  updated_at: string;
-}
 
-export default function ActivityPage() {
+export default function BrandSubmissionPage() {
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -90,8 +73,7 @@ export default function ActivityPage() {
       setLoading(true);
       console.log("🔍 Fetching quiz submissions...");
 
-      const response = await fetch("/api/quiz-submissions");
-      const result = await response.json();
+      const result = await apiService.getQuizSubmissions();
 
       if (result.success) {
         setSubmissions(result.data || []);
@@ -101,12 +83,19 @@ export default function ActivityPage() {
           "records"
         );
       } else {
-        console.error("Error fetching quiz submissions:", result.error);
+        console.error("Error fetching quiz submissions");
         setSubmissions([]);
       }
     } catch (error) {
       console.error("❌ Error fetching quiz submissions:", error);
       setSubmissions([]);
+
+      if (error instanceof ApiError) {
+        console.error(
+          `API Error [${error.status}]:`,
+          error.getFriendlyMessage()
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -137,27 +126,24 @@ export default function ActivityPage() {
 
     try {
       setDeleting(true);
-      const response = await fetch(
-        `/api/quiz-submissions/${submissionToDelete.id}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to delete submission");
-      }
+      await apiService.deleteQuizSubmission(submissionToDelete.id);
 
       console.log("✅ Submission deleted successfully");
       setIsDeleteModalOpen(false);
       setSubmissionToDelete(null);
       // Refresh the list
       await fetchQuizSubmissions();
-    } catch (error: any) {
+    } catch (error) {
       console.error("❌ Error deleting submission:", error);
-      alert(`Failed to delete submission: ${error.message}`);
+
+      let errorMessage = "Failed to delete submission. Please try again.";
+      if (error instanceof ApiError) {
+        errorMessage = error.getFriendlyMessage();
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      alert(errorMessage);
     } finally {
       setDeleting(false);
     }
@@ -182,18 +168,25 @@ export default function ActivityPage() {
       setIsDetailModalOpen(true);
 
       // Fetch full submission details
-      const response = await fetch(`/api/quiz-submissions/${submission.id}`);
-      const result = await response.json();
+      const result = await apiService.getQuizSubmission(submission.id);
 
       if (result.success && result.data) {
         setSelectedSubmission(result.data);
       } else {
-        console.error("Error fetching submission details:", result.error);
+        console.error("Error fetching submission details");
         // Fallback to the submission data we already have
         setSelectedSubmission(submission);
       }
     } catch (error) {
       console.error("❌ Error fetching submission details:", error);
+
+      if (error instanceof ApiError) {
+        console.error(
+          `API Error [${error.status}]:`,
+          error.getFriendlyMessage()
+        );
+      }
+
       // Fallback to the submission data we already have
       setSelectedSubmission(submission);
     } finally {
@@ -232,8 +225,8 @@ export default function ActivityPage() {
     const rows = submissionsList.map((submission) => {
       return [
         submission.id,
-        submission.firstName || "",
-        submission.lastName || "",
+        submission.first_name || "",
+        submission.last_name || "",
         submission.email || "",
         submission.phone_number || "",
         submission.referral || "",
@@ -369,9 +362,7 @@ export default function ActivityPage() {
     try {
       setBulkDeleting(true);
       const deletePromises = selectedSubmissions.map((submission) =>
-        fetch(`/api/quiz-submissions/${submission.id}`, {
-          method: "DELETE",
-        })
+        apiService.deleteQuizSubmission(submission.id)
       );
 
       const results = await Promise.allSettled(deletePromises);
@@ -390,9 +381,21 @@ export default function ActivityPage() {
       // Clear selection and refresh
       setSelectedIds(new Set());
       await fetchQuizSubmissions();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("❌ Error bulk deleting submissions:", error);
-      alert(`Failed to delete submissions: ${error.message}`);
+
+      let errorMessage = "Failed to delete submissions. Please try again.";
+      if (error instanceof ApiError) {
+        console.error(
+          `API Error [${error.status}]:`,
+          error.getFriendlyMessage()
+        );
+        errorMessage = error.getFriendlyMessage();
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      alert(errorMessage);
     } finally {
       setBulkDeleting(false);
     }
@@ -419,7 +422,7 @@ export default function ActivityPage() {
     const query = searchQuery.toLowerCase().trim();
     return submissionList.filter((submission) => {
       const fullName =
-        `${submission.firstName} ${submission.lastName}`.toLowerCase();
+        `${submission.first_name} ${submission.last_name}`.toLowerCase();
       const email = submission.email.toLowerCase();
       const brandName = submission.brand_name.toLowerCase();
       const brandStyle = submission.brand_style.toLowerCase();
@@ -567,19 +570,19 @@ export default function ActivityPage() {
                         index % 4 === 0
                           ? "bg-[#8359ee]"
                           : index % 4 === 1
-                          ? "bg-orange-500"
-                          : index % 4 === 2
-                          ? "bg-green-500"
-                          : "bg-blue-500"
+                            ? "bg-orange-500"
+                            : index % 4 === 2
+                              ? "bg-green-500"
+                              : "bg-blue-500"
                       }`}
                     >
                       <span className="text-white text-xs font-semibold">
-                        {getInitials(submission.firstName, submission.lastName)}
+                        {getInitials(submission.first_name, submission.last_name)}
                       </span>
                     </div>
                     <div className="min-w-0">
                       <div className="font-medium text-gray-900 text-sm">
-                        {submission.firstName} {submission.lastName}
+                        {submission.first_name} {submission.last_name}
                       </div>
                       <div className="text-xs text-gray-500 truncate">
                         {submission.email}
@@ -599,10 +602,10 @@ export default function ActivityPage() {
                         submission.logo_status === "completed"
                           ? "bg-green-500"
                           : submission.logo_status === "in_progress"
-                          ? "bg-blue-500"
-                          : submission.logo_status === "pending"
-                          ? "bg-yellow-500"
-                          : "bg-gray-500"
+                            ? "bg-blue-500"
+                            : submission.logo_status === "pending"
+                              ? "bg-yellow-500"
+                              : "bg-gray-500"
                       }`}
                     ></div>
                     <select
@@ -625,20 +628,20 @@ export default function ActivityPage() {
                         submission.timeline === "urgent"
                           ? "bg-red-500"
                           : submission.timeline === "asap"
-                          ? "bg-yellow-500"
-                          : submission.timeline === "flexible"
-                          ? "bg-green-500"
-                          : "bg-blue-500"
+                            ? "bg-yellow-500"
+                            : submission.timeline === "flexible"
+                              ? "bg-green-500"
+                              : "bg-blue-500"
                       }`}
                     ></div>
                     <span className="text-xs text-gray-700 capitalize">
                       {submission.timeline === "urgent"
                         ? "Today"
                         : submission.timeline === "asap"
-                        ? "This week"
-                        : submission.timeline === "flexible"
-                        ? "Next month"
-                        : submission.timeline}
+                          ? "This week"
+                          : submission.timeline === "flexible"
+                            ? "Next month"
+                            : submission.timeline}
                     </span>
                   </div>
                 </TableCell>
@@ -705,7 +708,7 @@ export default function ActivityPage() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">
-                  Activity
+                  Brand Submissions
                 </h1>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Monitor submissions and projects
@@ -1103,8 +1106,7 @@ export default function ActivityPage() {
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Full Name</p>
                       <p className="text-sm font-medium text-gray-900">
-                        {selectedSubmission.firstName}{" "}
-                        {selectedSubmission.lastName}
+                        {selectedSubmission.full_name || `${selectedSubmission.first_name} ${selectedSubmission.last_name}`}
                       </p>
                     </div>
                     <div>
@@ -1165,10 +1167,10 @@ export default function ActivityPage() {
                             selectedSubmission.logo_status === "completed"
                               ? "bg-green-500"
                               : selectedSubmission.logo_status === "in_progress"
-                              ? "bg-blue-500"
-                              : selectedSubmission.logo_status === "pending"
-                              ? "bg-yellow-500"
-                              : "bg-gray-500"
+                                ? "bg-blue-500"
+                                : selectedSubmission.logo_status === "pending"
+                                  ? "bg-yellow-500"
+                                  : "bg-gray-500"
                           }`}
                         ></div>
                         <span className="text-sm font-medium text-gray-900 capitalize">
@@ -1252,20 +1254,20 @@ export default function ActivityPage() {
                             selectedSubmission.timeline === "urgent"
                               ? "bg-red-500"
                               : selectedSubmission.timeline === "asap"
-                              ? "bg-yellow-500"
-                              : selectedSubmission.timeline === "flexible"
-                              ? "bg-green-500"
-                              : "bg-blue-500"
+                                ? "bg-yellow-500"
+                                : selectedSubmission.timeline === "flexible"
+                                  ? "bg-green-500"
+                                  : "bg-blue-500"
                           }`}
                         ></div>
                         <span className="text-sm font-medium text-gray-900 capitalize">
                           {selectedSubmission.timeline === "urgent"
                             ? "Today"
                             : selectedSubmission.timeline === "asap"
-                            ? "This week"
-                            : selectedSubmission.timeline === "flexible"
-                            ? "Next month"
-                            : selectedSubmission.timeline}
+                              ? "This week"
+                              : selectedSubmission.timeline === "flexible"
+                                ? "Next month"
+                                : selectedSubmission.timeline}
                         </span>
                       </div>
                     </div>
@@ -1349,7 +1351,7 @@ export default function ActivityPage() {
               </span>{" "}
               by{" "}
               <span className="font-semibold text-gray-900">
-                {submissionToDelete?.firstName} {submissionToDelete?.lastName}
+                {submissionToDelete?.first_name} {submissionToDelete?.last_name}
               </span>{" "}
               will be permanently deleted.
             </DialogDescription>

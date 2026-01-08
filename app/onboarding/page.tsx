@@ -10,20 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { UserCircle, Search, Calendar, Trash2, Eye, Mail, Package } from 'lucide-react'
 
-interface OnboardingAnswer {
-  id: string
-  user_id: string
-  answers: any // JSON object with form data
-  completed_at: string
-  created_at: string
-  updated_at: string
-  client: {
-    id: string
-    name: string | null
-    email: string
-    plan: string
-  } | null
-}
+import { apiService, OnboardingAnswer, KitType } from '@/lib/api'
 
 export default function OnboardingPage() {
   const [answers, setAnswers] = useState<OnboardingAnswer[]>([])
@@ -38,14 +25,13 @@ export default function OnboardingPage() {
       setLoading(true)
       console.log('🔍 Fetching onboarding answers...')
       
-      const response = await fetch('/api/onboarding-answers')
-      const result = await response.json()
+      const result = await apiService.getOnboardingAnswers()
       
       if (result.success) {
         setAnswers(result.data || [])
         console.log('✅ Onboarding answers loaded:', result.count || 0, 'records')
       } else {
-        console.error('❌ Error fetching onboarding answers:', result.error)
+        console.error('❌ Failed to fetch onboarding answers')
         setAnswers([])
       }
     } catch (error) {
@@ -62,6 +48,7 @@ export default function OnboardingPage() {
 
   // Format date for display
   const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A'
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -74,10 +61,10 @@ export default function OnboardingPage() {
   // Filter answers based on search term
   const filteredAnswers = answers.filter(answer => {
     const searchLower = searchTerm.toLowerCase()
-    const email = answer.client?.email?.toLowerCase() || ''
-    const name = answer.client?.name?.toLowerCase() || ''
+    const email = answer.project?.email?.toLowerCase() || ''
+    const name = answer.project?.name?.toLowerCase() || ''
     const userId = answer.user_id.toLowerCase()
-    const plan = answer.client?.plan?.toLowerCase() || ''
+    const plan = answer.project?.plan?.toLowerCase() || ''
     
     return (
       email.includes(searchLower) ||
@@ -94,7 +81,7 @@ export default function OnboardingPage() {
   }
 
   // Get plan badge color
-  const getPlanBadge = (plan: string | null | undefined) => {
+  const getPlanBadge = (plan: KitType | string | null | undefined) => {
     if (!plan) return null
     return plan === 'LAUNCH' ? (
       <Badge className="bg-blue-100 text-blue-700">Launch</Badge>
@@ -174,16 +161,16 @@ export default function OnboardingPage() {
                           {index + 1}
                         </TableCell>
                         <TableCell>
-                          {answer.client?.name || 'N/A'}
+                          {answer.project?.name || 'N/A'}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Mail className="h-4 w-4 text-gray-400" />
-                            {answer.client?.email || answer.user_id}
+                            {answer.project?.email || answer.user_id}
                           </div>
                         </TableCell>
                         <TableCell>
-                          {getPlanBadge(answer.client?.plan)}
+                          {getPlanBadge(answer.project?.plan)}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -228,21 +215,21 @@ export default function OnboardingPage() {
               <div className="border-b pb-4">
                 <h3 className="font-semibold mb-3">User Information</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  {selectedAnswer.client && (
+                  {selectedAnswer.project && (
                     <>
-                      {selectedAnswer.client.name && (
+                      {selectedAnswer.project.name && (
                         <div>
                           <span className="text-gray-500">Name:</span>
-                          <p className="mt-1 font-medium">{selectedAnswer.client.name}</p>
+                          <p className="mt-1 font-medium">{selectedAnswer.project.name}</p>
                         </div>
                       )}
                       <div>
                         <span className="text-gray-500">Email:</span>
-                        <p className="mt-1 font-medium">{selectedAnswer.client.email}</p>
+                        <p className="mt-1 font-medium">{selectedAnswer.project.email}</p>
                       </div>
                       <div>
                         <span className="text-gray-500">Plan:</span>
-                        <div className="mt-1">{getPlanBadge(selectedAnswer.client.plan)}</div>
+                        <div className="mt-1">{getPlanBadge(selectedAnswer.project.plan)}</div>
                       </div>
                     </>
                   )}
