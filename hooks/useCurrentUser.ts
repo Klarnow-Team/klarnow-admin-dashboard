@@ -34,7 +34,7 @@ export function useCurrentUser() {
         console.log('✅ [useCurrentUser] User fetched:', response.admin)
         setUser({
           id: response.admin.id,
-          name: response.admin.name,
+          name: response.admin.name || '',
           email: response.admin.email,
           role: response.admin.role
         })
